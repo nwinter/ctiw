@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json.schemastore.org/claude-settings.json",
+  "environment": {
+    "CTIW_ENV": "development"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/claude-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(git *)",
+      "Bash(rm *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(chmod *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(echo *)",
+      "Bash(rg *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(pwd)",
+      "Bash(which *)",
+      "Bash(ps *)",
+      "Bash(kill *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(less *)",
+      "Bash(wc *)",
+      "Bash(sort *)",
+      "Bash(awk *)",
+      "Bash(sed *)",
+      "Bash(node *)",
+      "Bash(curl *)",
+      "Bash(wget *)"
+    ]
+  }
+}
