@@ -7,15 +7,12 @@
 	import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 	import { ctiwLanguage } from '$lib/editor/ctiw-language';
 	import { ctiwAutocomplete } from '$lib/editor/ctiw-autocomplete';
+	import { onMount } from 'svelte';
 
 	let { code = $bindable('') }: { code: string } = $props();
 
 	let editorRef: HTMLDivElement;
 	let editorView: EditorView | undefined;
-
-	// Use a plain variable (NOT reactive) to track what we last synced
-	// This avoids Svelte reactivity timing issues
-	let lastKnownCode = code;
 
 	// Kid-friendly dark theme with bright, fun colors
 	const ctiwTheme = EditorView.theme({
@@ -109,57 +106,50 @@
 		// Listen for changes and update the code prop
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
-				const newCode = update.state.doc.toString();
-				// Update lastKnownCode BEFORE setting code to prevent sync effect
-				lastKnownCode = newCode;
-				code = newCode;
+				code = update.state.doc.toString();
 			}
 		})
 	];
 
-	$effect(() => {
-		if (editorRef && !editorView) {
-			const state = EditorState.create({
-				doc: code,
-				extensions: baseExtensions
-			});
+	// Use onMount for editor initialization - no reactive dependencies
+	onMount(() => {
+		const state = EditorState.create({
+			doc: code,
+			extensions: baseExtensions
+		});
 
-			editorView = new EditorView({
-				state,
-				parent: editorRef
-			});
-		}
+		editorView = new EditorView({
+			state,
+			parent: editorRef
+		});
 
 		return () => {
-			if (editorView) {
-				editorView.destroy();
-				editorView = undefined;
-			}
+			editorView?.destroy();
+			editorView = undefined;
 		};
 	});
 
-	// Sync external code changes to the editor (from AI assistant, project load, etc.)
-	// Only sync when editor is NOT focused - if user is typing, don't interfere
-	$effect(() => {
-		// Read code to create dependency on the prop
+	// Sync external code changes using $effect.pre to run before DOM updates
+	// This handles: loading projects, AI inserting code, shared links
+	$effect.pre(() => {
 		const currentCode = code;
 
-		// Only sync if editor exists and is NOT focused (user not actively typing)
-		// This prevents the feedback loop entirely
-		if (editorView && !editorView.hasFocus) {
-			const currentContent = editorView.state.doc.toString();
-			if (currentCode !== currentContent) {
-				editorView.dispatch({
-					changes: {
-						from: 0,
-						to: currentContent.length,
-						insert: currentCode
-					}
-				});
-			}
+		// Skip if no editor yet or if editor content matches
+		if (!editorView) return;
+
+		const editorContent = editorView.state.doc.toString();
+		if (currentCode === editorContent) return;
+
+		// Only sync if editor is NOT focused (external change)
+		if (!editorView.hasFocus) {
+			editorView.dispatch({
+				changes: {
+					from: 0,
+					to: editorContent.length,
+					insert: currentCode
+				}
+			});
 		}
-		// Always keep lastKnownCode in sync for reference
-		lastKnownCode = currentCode;
 	});
 </script>
 
