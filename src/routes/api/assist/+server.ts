@@ -241,18 +241,22 @@ ${code}
 	}
 
 	try {
-		const response = await anthropic.messages.create({
+		// Use streaming to handle long-running requests
+		const stream = anthropic.messages.stream({
 			model: 'claude-opus-4-5',
-			max_tokens: 100000,
+			max_tokens: 16000,
 			thinking: {
 				type: 'enabled',
-				budget_tokens: 32768
+				budget_tokens: 10000
 			},
 			system: systemPrompt,
 			messages: [
 				{ role: 'user', content: userMessage }
 			]
 		});
+
+		// Collect the full response
+		const response = await stream.finalMessage();
 
 		// Extract thinking and response text
 		let thinkingText = '';

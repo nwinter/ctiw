@@ -139,35 +139,27 @@
 	});
 
 	// Sync external code changes to the editor (from AI assistant, project load, etc.)
-	// Only runs when `code` prop changes from OUTSIDE the editor
+	// Only sync when editor is NOT focused - if user is typing, don't interfere
 	$effect(() => {
 		// Read code to create dependency on the prop
 		const currentCode = code;
 
-		// Check if this is an external change (not from our updateListener)
-		if (editorView && currentCode !== lastKnownCode) {
-			// This is an external change - sync to editor
+		// Only sync if editor exists and is NOT focused (user not actively typing)
+		// This prevents the feedback loop entirely
+		if (editorView && !editorView.hasFocus) {
 			const currentContent = editorView.state.doc.toString();
 			if (currentCode !== currentContent) {
-				// Update tracking variable BEFORE dispatch
-				lastKnownCode = currentCode;
-
-				// Preserve cursor position if possible
-				const selection = editorView.state.selection;
 				editorView.dispatch({
 					changes: {
 						from: 0,
 						to: currentContent.length,
 						insert: currentCode
-					},
-					// Try to maintain selection, but clamp to new content length
-					selection: {
-						anchor: Math.min(selection.main.anchor, currentCode.length),
-						head: Math.min(selection.main.head, currentCode.length)
 					}
 				});
 			}
 		}
+		// Always keep lastKnownCode in sync for reference
+		lastKnownCode = currentCode;
 	});
 </script>
 
