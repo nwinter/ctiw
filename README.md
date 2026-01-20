@@ -54,7 +54,32 @@ ctiw/
 
 ## The CTIW Language
 
-*Language specification coming soon - based on Clark's original design*
+See the full [Language Specification](./docs/LANGUAGE_SPEC.md) for details.
+
+### Quick Example
+
+```ctiw
+=CTIW=
+=title=My Page=
+
+=divide= id:header= color=BAF2Y9=
+.. =text=Welcome!=
+=divide=
+
+=divide= id:main=
+.. =password=
+.. =button=Login=
+=divide=
+
+==CTIW==
+```
+
+### Key Features
+
+- **`=` delimiters** - Easy to type, visually clear
+- **Dots for nesting** - `.....` shows indentation you can see!
+- **Simple elements** - `=title=`, `=button=`, `=divide=`
+- **Hex colors** - `color=FF0000=` (no # needed)
 
 ## For AI Agents
 

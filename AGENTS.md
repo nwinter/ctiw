@@ -21,7 +21,7 @@ This file contains instructions for all AI coding agents (Claude Code, GitHub Co
 
 ## Automated Workflow
 
-Every coding session should follow this workflow:
+**CRITICAL**: Every coding task MUST follow this complete workflow. Never skip steps!
 
 ### 1. Save Development Prompts
 Before making changes, document the task:
@@ -35,28 +35,42 @@ Before making changes, document the task:
 ### 2. Implement Changes
 Make your code changes following the project patterns.
 
-### 3. Type Check
+### 3. Test (TDD Preferred)
 ```bash
-npm run check
+npm test              # Run all tests - MUST PASS
+npm test -- --watch   # Watch mode during development
+```
+Write tests BEFORE implementation when possible (Test-Driven Development).
+
+### 4. Type Check
+```bash
+npm run check         # MUST PASS with no errors
 ```
 
-### 4. Build
+### 5. Build
 ```bash
-npm run build
+npm run build         # MUST succeed
 ```
 
-### 5. Test
-```bash
-npm test
-```
+### 6. Update Documentation
+- Update README.md if adding user-facing features
+- Update docs/LANGUAGE_SPEC.md if changing language features
+- Update DESIGN_PROMPTS.md with outcome
 
-### 6. Commit and Push
-If all checks pass:
+### 7. Commit and Push
+**ALWAYS commit and push after every completed task:**
 ```bash
 git add -A
 git commit -m "feat/fix/chore: description"
 git push origin $(git branch --show-current)
 ```
+
+### Workflow Summary
+```
+Prompt → Log → Implement → Test → Check → Build → Document → Commit → Push
+```
+
+**Never leave uncommitted work!** Each task should result in a pushed commit.
 
 ## Development Server
 
