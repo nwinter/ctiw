@@ -27,20 +27,30 @@
 ==CTIW==`;
 
 	let code = $state(DEFAULT_CODE);
-	let parseErrors = $state<string[]>([]);
+
+	// Parse result derived from code (no mutations inside derived!)
+	let parseResult = $derived.by(() => {
+		try {
+			return { result: parse(code), error: null };
+		} catch (err) {
+			return { result: null, error: err instanceof Error ? err.message : 'Unknown error' };
+		}
+	});
+
+	// Errors derived from parse result
+	let parseErrors = $derived.by(() => {
+		if (parseResult.error) {
+			return [`Error: ${parseResult.error}`];
+		}
+		if (parseResult.result && parseResult.result.errors.length > 0) {
+			return parseResult.result.errors.map(e => `Line ${e.line}: ${e.message}`);
+		}
+		return [];
+	});
 
 	// Generate HTML from CTIW code
 	let generatedHTML = $derived.by(() => {
-		try {
-			const result = parse(code);
-			if (result.errors.length > 0) {
-				parseErrors = result.errors.map(e => `Line ${e.line}: ${e.message}`);
-			} else {
-				parseErrors = [];
-			}
-			return generateHTML(result.document);
-		} catch (err) {
-			parseErrors = [`Error: ${err instanceof Error ? err.message : 'Unknown error'}`];
+		if (parseResult.error || !parseResult.result) {
 			return `<!DOCTYPE html>
 <html>
 <head><title>Preview</title></head>
@@ -49,6 +59,7 @@
 </body>
 </html>`;
 		}
+		return generateHTML(parseResult.result.document);
 	});
 
 	// Handle inserting code from AI assistant
