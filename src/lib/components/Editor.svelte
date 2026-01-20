@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { EditorState, type Extension, type Transaction } from '@codemirror/state';
+	import { EditorState, type Extension } from '@codemirror/state';
 	import { EditorView, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, keymap } from '@codemirror/view';
 	import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 	import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 	import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 	import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
-	import { untrack } from 'svelte';
 	import { ctiwLanguage } from '$lib/editor/ctiw-language';
 	import { ctiwAutocomplete } from '$lib/editor/ctiw-autocomplete';
 
@@ -14,8 +13,9 @@
 	let editorRef: HTMLDivElement;
 	let editorView: EditorView | undefined;
 
-	// Track the last code we synced TO the editor to avoid feedback loops
-	let lastSyncedCode = $state(code);
+	// Use a plain variable (NOT reactive) to track what we last synced
+	// This avoids Svelte reactivity timing issues
+	let lastKnownCode = code;
 
 	// Kid-friendly dark theme with bright, fun colors
 	const ctiwTheme = EditorView.theme({
@@ -110,9 +110,8 @@
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
 				const newCode = update.state.doc.toString();
-				// Update lastSyncedCode to match what's in the editor
-				// This prevents the sync effect from re-dispatching
-				lastSyncedCode = newCode;
+				// Update lastKnownCode BEFORE setting code to prevent sync effect
+				lastKnownCode = newCode;
 				code = newCode;
 			}
 		})
@@ -142,26 +141,33 @@
 	// Sync external code changes to the editor (from AI assistant, project load, etc.)
 	// Only runs when `code` prop changes from OUTSIDE the editor
 	$effect(() => {
-		// Read code to create dependency
+		// Read code to create dependency on the prop
 		const currentCode = code;
 
-		// Use untrack to read state without creating dependencies
-		untrack(() => {
-			if (editorView && currentCode !== lastSyncedCode) {
-				// This is an external change - sync to editor
-				const currentContent = editorView.state.doc.toString();
-				if (currentCode !== currentContent) {
-					lastSyncedCode = currentCode;
-					editorView.dispatch({
-						changes: {
-							from: 0,
-							to: currentContent.length,
-							insert: currentCode
-						}
-					});
-				}
+		// Check if this is an external change (not from our updateListener)
+		if (editorView && currentCode !== lastKnownCode) {
+			// This is an external change - sync to editor
+			const currentContent = editorView.state.doc.toString();
+			if (currentCode !== currentContent) {
+				// Update tracking variable BEFORE dispatch
+				lastKnownCode = currentCode;
+
+				// Preserve cursor position if possible
+				const selection = editorView.state.selection;
+				editorView.dispatch({
+					changes: {
+						from: 0,
+						to: currentContent.length,
+						insert: currentCode
+					},
+					// Try to maintain selection, but clamp to new content length
+					selection: {
+						anchor: Math.min(selection.main.anchor, currentCode.length),
+						head: Math.min(selection.main.head, currentCode.length)
+					}
+				});
 			}
-		});
+		}
 	});
 </script>
 

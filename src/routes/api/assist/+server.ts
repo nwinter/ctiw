@@ -242,11 +242,11 @@ ${code}
 
 	try {
 		const response = await anthropic.messages.create({
-			model: 'claude-opus-4-5-20250514',
-			max_tokens: 8000,
+			model: 'claude-opus-4-5',
+			max_tokens: 100000,
 			thinking: {
 				type: 'enabled',
-				budget_tokens: 5000
+				budget_tokens: 32768
 			},
 			system: systemPrompt,
 			messages: [

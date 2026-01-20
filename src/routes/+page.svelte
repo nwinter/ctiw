@@ -277,7 +277,7 @@
 <div class="h-screen flex flex-col bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 overflow-hidden">
 	<!-- Header -->
 	<header class="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-50">
-		<div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+		<div class="px-4 py-3 flex items-center justify-between">
 			<div class="flex items-center gap-3">
 				<h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 text-transparent bg-clip-text">
 					CTIW
@@ -310,14 +310,14 @@
 		</div>
 	</header>
 
-	<main class="flex-1 max-w-7xl mx-auto p-4 w-full min-h-0">
+	<main class="flex-1 p-4 w-full min-h-0">
 		{#if showGallery}
 			<!-- Gallery View -->
-			<div class="bg-white rounded-2xl shadow-xl p-6 mb-6 max-h-full overflow-auto">
+			<div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl p-6 mb-6 max-h-full overflow-auto">
 				<Gallery onLoadProject={handleLoadProject} onNewProject={handleNewProject} />
 			</div>
 		{:else}
-			<!-- Editor View - Responsive layout with fixed AI helper width -->
+			<!-- Editor View - Full width layout with fixed AI helper width -->
 			<div class="flex gap-4 h-full">
 				<!-- Code & Preview Container - Takes remaining space -->
 				<div class="flex-1 flex gap-4 min-w-0">
