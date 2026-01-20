@@ -11,6 +11,10 @@
 	let editorRef: HTMLDivElement;
 	let editorView: EditorView | undefined;
 
+	// Track whether code changes originated from the editor itself
+	// to prevent feedback loops that kill focus and undo history
+	let isInternalChange = false;
+
 	// Kid-friendly dark theme with bright, fun colors
 	const ctiwTheme = EditorView.theme({
 		'&': {
@@ -100,6 +104,7 @@
 		// Listen for changes and update the code prop
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
+				isInternalChange = true;
 				code = update.state.doc.toString();
 			}
 		})
@@ -126,9 +131,15 @@
 		};
 	});
 
-	// Sync external code changes to the editor
+	// Sync external code changes to the editor (from AI assistant, project load, etc.)
 	$effect(() => {
 		if (editorView) {
+			// Skip if this change came from the editor itself
+			if (isInternalChange) {
+				isInternalChange = false;
+				return;
+			}
+
 			const currentContent = editorView.state.doc.toString();
 			if (code !== currentContent) {
 				editorView.dispatch({

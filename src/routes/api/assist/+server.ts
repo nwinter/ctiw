@@ -13,29 +13,66 @@ interface AssistResponse {
 
 // CTIW Language quick reference for generating helpful responses
 const CTIW_BASICS = `
-CTIW documents start with =CTIW= and end with ==CTIW==
+CTIW = Clark's Text for Instructing Webpages
 
-Basic elements:
-- =title=Your Title= - Page title
-- =text=Some words= - Regular text
-- =button=Click Me= - A button
-- =line= - Line break
-- =password= - Password input
-- =input= - Text input
-- =img=picture.png= - Image
-- =divide= ... =divide= - Container (like a box)
+CTIW is a kid-friendly programming language for building web pages.
+Every CTIW page starts with =CTIW= and ends with ==CTIW==
 
-Properties:
-- color=FF0000= - Colors use 6-letter hex codes
-- id:name= - Give an element an ID
-- outline=visible= - Show box outline
-- in=middle= - Center alignment
-- size=100= - Set size
+ELEMENTS (what you can put on the page):
+- =title=Your Title= - Big heading at the top
+- =text=Some words= - Regular paragraph text
+- =button=Click Me= - A clickable button
+- =line= - Adds a line break (new line)
+- =password= - Password input box (hides what you type)
+- =input= - Text input box for typing
+- =img=picture.png= - Shows an image
+- =divide= ... =divide= - Container/box for grouping things together
+- =(time)= - Special: shows the current time
 
-Indentation uses dots:
+PROPERTIES (how to customize elements):
+Put properties AFTER the content, separated by spaces:
+=text=Hello!= color=FF0000=
+
+- color=RRGGBB= - Set colors using hex codes (6 characters)
+  Examples: FF0000=Red, 00FF00=Green, 0000FF=Blue, FFFF00=Yellow, FF00FF=Pink
+- id:name= - Give an element a name/ID
+- outline=visible= - Show a border around containers
+- in=middle= - Center the content
+- size=100= - Set the size
+
+CONTAINERS (divide):
+Use =divide= to create boxes that hold other elements.
+Always close with another =divide=
+
+INDENTATION (putting things inside boxes):
+Use dots (two per level) at the start of lines to show nesting:
+=divide= color=ADD8E6=
+.. =text=This is inside the blue box!=
+.. =button=A button in the box!=
 =divide=
-.. =text=This is inside!=
+
+You can nest boxes inside boxes:
+=divide= color=FFD700=
+.. =divide= color=98FB98=
+.... =text=Nested twice!=
+.. =divide=
 =divide=
+
+COMPLETE EXAMPLE:
+=CTIW=
+=title=Welcome to My Page=
+
+=text=This is a paragraph of text.=
+
+=divide= color=E6E6FA= outline=visible=
+.. =title=A Purple Box=
+.. =text=Boxes can contain multiple elements!=
+.. =button=Click here!=
+=divide=
+
+=text=More text outside the box.=
+=(time)=
+==CTIW==
 `;
 
 // Check for common issues in CTIW code
@@ -147,7 +184,7 @@ function generateResponse(request: AssistRequest): AssistResponse {
 
 	if (lowercaseMsg.includes('what') && lowercaseMsg.includes('ctiw')) {
 		return {
-			message: "CTIW stands for \"Clark's Alternative to HTML/CSS\"! It's a fun, easy way to build web pages. Instead of complicated HTML tags like <div>, you use simple commands like =divide=. It's designed to be easy to type and understand!"
+			message: "CTIW stands for \"Clark's Text for Instructing Webpages\"! It's a fun, easy way to build web pages. Instead of complicated HTML tags like <div>, you use simple commands like =divide=. Everything uses = signs, which makes it easy to type and understand!\n\nEvery CTIW page starts with =CTIW= and ends with ==CTIW==. Inside, you add elements like =title=, =text=, =button=, and more!"
 		};
 	}
 

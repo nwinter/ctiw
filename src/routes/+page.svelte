@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Editor from '$lib/components/Editor.svelte';
 	import Preview from '$lib/components/Preview.svelte';
 	import AIAssistant from '$lib/components/AIAssistant.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
+	import SyntaxLegend from '$lib/components/SyntaxLegend.svelte';
 	import { parse } from '$lib/parser/parser';
 	import { generateHTML } from '$lib/parser/codegen';
 	import { projectsStore, type Project } from '$lib/stores/projects.svelte';
@@ -10,6 +12,9 @@
 	// View modes
 	let showGallery = $state(true);
 	let currentProject = $state<Project | null>(null);
+	let showShareModal = $state(false);
+	let shareUrl = $state('');
+	let copySuccess = $state(false);
 
 	// Default CTIW example code for kids to explore
 	const DEFAULT_CODE = `=CTIW=
@@ -63,11 +68,33 @@
 	});
 
 	// Handle inserting code from AI assistant
+	// Smart insertion: if it's a full document, replace; if it's a snippet, append before ==CTIW==
 	function handleInsertCode(newCode: string) {
-		code = newCode;
+		const isFullDocument = newCode.trim().startsWith('=CTIW=');
+
+		let resultCode: string;
+		if (isFullDocument) {
+			// Full document - replace everything
+			resultCode = newCode;
+		} else {
+			// Snippet - insert before ==CTIW==
+			const trimmedCode = code.trim();
+			const closerIndex = trimmedCode.lastIndexOf('==CTIW==');
+
+			if (closerIndex !== -1) {
+				// Insert before the closing ==CTIW==
+				const beforeCloser = trimmedCode.slice(0, closerIndex).trimEnd();
+				resultCode = beforeCloser + '\n\n' + newCode.trim() + '\n==CTIW==';
+			} else {
+				// No closer found - just append
+				resultCode = code + '\n' + newCode;
+			}
+		}
+
+		code = resultCode;
 		// Auto-save if we have a project
 		if (currentProject) {
-			projectsStore.updateProject(currentProject.id, { code: newCode });
+			projectsStore.updateProject(currentProject.id, { code: resultCode });
 		}
 	}
 
@@ -118,9 +145,60 @@
 		}
 		return () => clearTimeout(saveTimeout);
 	});
+
+	// URL state management - check for code in URL hash on load
+	$effect(() => {
+		if (browser) {
+			const hash = window.location.hash.slice(1); // Remove the #
+			if (hash) {
+				try {
+					// Decode base64 URL-safe to regular base64, then decode
+					const base64 = hash.replace(/-/g, '+').replace(/_/g, '/');
+					const decoded = atob(base64);
+					if (decoded.includes('=CTIW=')) {
+						code = decoded;
+						showGallery = false;
+						// Clear the hash after loading
+						history.replaceState(null, '', window.location.pathname);
+					}
+				} catch {
+					// Invalid base64 - ignore
+				}
+			}
+		}
+	});
+
+	// Generate shareable URL
+	function handleShare() {
+		// Encode code as URL-safe base64
+		const base64 = btoa(code);
+		const urlSafe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+		shareUrl = `${window.location.origin}${window.location.pathname}#${urlSafe}`;
+		showShareModal = true;
+		copySuccess = false;
+	}
+
+	// Copy URL to clipboard
+	async function copyShareUrl() {
+		try {
+			await navigator.clipboard.writeText(shareUrl);
+			copySuccess = true;
+			setTimeout(() => copySuccess = false, 2000);
+		} catch {
+			// Fallback for older browsers
+			const input = document.createElement('input');
+			input.value = shareUrl;
+			document.body.appendChild(input);
+			input.select();
+			document.execCommand('copy');
+			document.body.removeChild(input);
+			copySuccess = true;
+			setTimeout(() => copySuccess = false, 2000);
+		}
+	}
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
+<div class="h-screen flex flex-col bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 overflow-hidden">
 	<!-- Header -->
 	<header class="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-50">
 		<div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -128,7 +206,7 @@
 				<h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 text-transparent bg-clip-text">
 					CTIW
 				</h1>
-				<span class="text-sm text-gray-500 hidden sm:inline">Clark's Totally Incredible Website</span>
+				<span class="text-sm text-gray-500 hidden sm:inline">Clark's Text for Instructing Webpages</span>
 			</div>
 
 			{#if !showGallery}
@@ -138,6 +216,12 @@
 						class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
 					>
 						← My Projects
+					</button>
+					<button
+						onclick={handleShare}
+						class="px-3 py-1.5 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors border border-purple-200"
+					>
+						🔗 Share
 					</button>
 					<button
 						onclick={handleSaveProject}
@@ -150,32 +234,32 @@
 		</div>
 	</header>
 
-	<main class="max-w-7xl mx-auto p-4">
+	<main class="flex-1 max-w-7xl mx-auto p-4 w-full min-h-0">
 		{#if showGallery}
 			<!-- Gallery View -->
-			<div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+			<div class="bg-white rounded-2xl shadow-xl p-6 mb-6 max-h-full overflow-auto">
 				<Gallery onLoadProject={handleLoadProject} onNewProject={handleNewProject} />
 			</div>
 		{:else}
 			<!-- Editor View -->
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
 				<!-- Editor Panel -->
-				<div class="space-y-3">
-					<div class="flex items-center justify-between">
-						<h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
-							<span class="text-2xl">✏️</span> Code
+				<div class="flex flex-col min-h-0">
+					<div class="flex items-center justify-between mb-2">
+						<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+							<span class="text-xl">✏️</span> Code
 						</h2>
 						{#if currentProject}
 							<span class="text-sm text-gray-500">{currentProject.name}</span>
 						{/if}
 					</div>
-					<div class="rounded-xl overflow-hidden shadow-lg bg-[#1a1b26]" style="height: 500px;">
+					<div class="flex-1 min-h-0 rounded-xl overflow-hidden shadow-lg bg-[#1a1b26]">
 						<Editor bind:code />
 					</div>
 
 					<!-- Parse Errors -->
 					{#if parseErrors.length > 0}
-						<div class="bg-red-50 border border-red-200 rounded-lg p-3">
+						<div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-2 flex-shrink-0">
 							<h3 class="text-sm font-semibold text-red-700 mb-1">Oops! Check your code:</h3>
 							<ul class="text-sm text-red-600 space-y-1">
 								{#each parseErrors as error}
@@ -184,24 +268,29 @@
 							</ul>
 						</div>
 					{/if}
+
+					<!-- Syntax Reference -->
+					<div class="mt-2 flex-shrink-0">
+						<SyntaxLegend />
+					</div>
 				</div>
 
 				<!-- Preview Panel -->
-				<div class="space-y-3">
-					<h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
-						<span class="text-2xl">👀</span> Preview
+				<div class="flex flex-col min-h-0">
+					<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+						<span class="text-xl">👀</span> Preview
 					</h2>
-					<div class="bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg" style="height: 500px;">
+					<div class="flex-1 min-h-0 bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg">
 						<Preview html={generatedHTML} />
 					</div>
 				</div>
 
 				<!-- AI Assistant Panel -->
-				<div class="space-y-3">
-					<h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
-						<span class="text-2xl">🤖</span> AI Helper
+				<div class="flex flex-col min-h-0">
+					<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+						<span class="text-xl">🤖</span> AI Helper
 					</h2>
-					<div class="rounded-xl overflow-hidden shadow-lg" style="height: 500px;">
+					<div class="flex-1 min-h-0 rounded-xl overflow-hidden shadow-lg">
 						<AIAssistant currentCode={code} onInsertCode={handleInsertCode} />
 					</div>
 				</div>
@@ -210,7 +299,52 @@
 	</main>
 
 	<!-- Footer -->
-	<footer class="mt-8 pb-4 text-center text-sm text-gray-500">
+	<footer class="py-2 text-center text-sm text-gray-500 flex-shrink-0">
 		Made with 💜 for Clark
 	</footer>
+
+	<!-- Share Modal -->
+	{#if showShareModal}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div
+			class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+			onclick={() => showShareModal = false}
+		>
+			<div
+				class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.key === 'Escape' && (showShareModal = false)}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="share-title"
+				tabindex="-1"
+			>
+				<h3 id="share-title" class="text-xl font-bold text-gray-800 mb-2">Share Your Creation!</h3>
+				<p class="text-gray-600 text-sm mb-4">
+					Copy this link to share your CTIW page with friends:
+				</p>
+				<div class="flex gap-2 mb-4">
+					<input
+						type="text"
+						readonly
+						value={shareUrl}
+						class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 font-mono truncate"
+					/>
+					<button
+						onclick={copyShareUrl}
+						class="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all text-sm font-semibold whitespace-nowrap"
+					>
+						{copySuccess ? '✓ Copied!' : 'Copy'}
+					</button>
+				</div>
+				<button
+					onclick={() => showShareModal = false}
+					class="w-full py-2 text-gray-500 hover:text-gray-700 text-sm"
+				>
+					Close
+				</button>
+			</div>
+		</div>
+	{/if}
 </div>

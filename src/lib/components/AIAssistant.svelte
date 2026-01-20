@@ -91,13 +91,20 @@
 	}
 
 	function insertCode(code: string) {
+		const isFullDocument = code.trim().startsWith('=CTIW=');
 		onInsertCode(code);
 		const confirmMessage: Message = {
 			id: crypto.randomUUID(),
 			role: 'assistant',
-			content: "I added the code to your editor. Take a look!"
+			content: isFullDocument
+				? "I replaced your code with the new version. Take a look!"
+				: "I added the snippet to your code (before ==CTIW==). Take a look!"
 		};
 		messages = [...messages, confirmMessage];
+	}
+
+	function getInsertButtonText(code: string): string {
+		return code.trim().startsWith('=CTIW=') ? 'Replace code' : 'Add to editor';
 	}
 </script>
 
@@ -140,7 +147,7 @@
 										class="insert-btn"
 										onclick={() => insertCode(message.codeSnippet!)}
 									>
-										Insert into editor
+										{getInsertButtonText(message.codeSnippet!)}
 									</button>
 								</div>
 							{/if}
