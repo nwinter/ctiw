@@ -6,7 +6,7 @@ import type { ElementNode, SpecialNode, PropertyNode } from '$lib/parser/ast';
 describe('CTIW Parser', () => {
 	describe('Document Structure', () => {
 		it('parses an empty document with just delimiters', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 ==CTIW==`;
 			const result = parse(source);
 
@@ -16,7 +16,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('handles whitespace around delimiters', () => {
-			const source = `  =CTIW=
+			const source = `  ==CTIW==
   ==CTIW==  `;
 			const result = parse(source);
 
@@ -29,11 +29,11 @@ describe('CTIW Parser', () => {
 			const result = parse(source);
 
 			expect(result.errors.length).toBeGreaterThan(0);
-			expect(result.errors[0].message).toContain('=CTIW=');
+			expect(result.errors[0].message).toContain('==CTIW==');
 		});
 
 		it('reports error for missing footer', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =title=Hello=`;
 			const result = parse(source);
 
@@ -44,7 +44,7 @@ describe('CTIW Parser', () => {
 
 	describe('Properties', () => {
 		it('parses a title and stores in metadata', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =title=Hello World=
 ==CTIW==`;
 			const result = parse(source);
@@ -53,7 +53,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses language property', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =language=english=
 ==CTIW==`;
 			const result = parse(source);
@@ -62,7 +62,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses font-size property as number', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =font-size=20=
 ==CTIW==`;
 			const result = parse(source);
@@ -71,7 +71,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses multiple properties into metadata', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =title=My Page=
 =language=english=
 =font-size=20=
@@ -86,7 +86,7 @@ describe('CTIW Parser', () => {
 
 	describe('Simple Elements', () => {
 		it('parses a button element with content', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =button=Click Me=
 ==CTIW==`;
 			const result = parse(source);
@@ -98,8 +98,8 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses text element', () => {
-			const source = `=CTIW=
-=text=Hello World=
+			const source = `==CTIW==
+==text==Hello World==
 ==CTIW==`;
 			const result = parse(source);
 
@@ -110,7 +110,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses img element with source', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =img=cat.png=
 ==CTIW==`;
 			const result = parse(source);
@@ -121,7 +121,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses line element (empty)', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =line=
 ==CTIW==`;
 			const result = parse(source);
@@ -131,7 +131,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses password input', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =password=
 ==CTIW==`;
 			const result = parse(source);
@@ -141,7 +141,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses input element', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =input=
 ==CTIW==`;
 			const result = parse(source);
@@ -151,9 +151,9 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses multiple elements', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =title=Welcome=
-=text=Some content=
+==text==Some content=
 =button=Click=
 ==CTIW==`;
 			const result = parse(source);
@@ -168,7 +168,7 @@ describe('CTIW Parser', () => {
 
 	describe('Element Properties', () => {
 		it('parses element with id using colon syntax', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide= id:main=
 =divide=
 ==CTIW==`;
@@ -180,7 +180,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses element with color property', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide= color=FF0000=
 =divide=
 ==CTIW==`;
@@ -191,7 +191,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses element with multiple properties', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide= id:header= outline=visible= color=BAF2Y9=
 =divide=
 ==CTIW==`;
@@ -204,7 +204,7 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses button with content and properties', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =button=Click Me= color=blue=
 ==CTIW==`;
 			const result = parse(source);
@@ -216,8 +216,8 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses in property for alignment', () => {
-			const source = `=CTIW=
-=text= in=middle=
+			const source = `==CTIW==
+==text== in=middle=
 ==CTIW==`;
 			const result = parse(source);
 
@@ -228,7 +228,7 @@ describe('CTIW Parser', () => {
 
 	describe('Special Elements', () => {
 		it('parses time special element', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =(time)=
 ==CTIW==`;
 			const result = parse(source);
@@ -241,7 +241,7 @@ describe('CTIW Parser', () => {
 
 	describe('Divide Containers', () => {
 		it('parses empty divide', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide=
 =divide=
 ==CTIW==`;
@@ -254,9 +254,9 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses divide with simple child', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide=
-.. =text=Hello inside!=
+....==text==Hello inside!==
 =divide=
 ==CTIW==`;
 			const result = parse(source);
@@ -271,10 +271,10 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses divide with multiple children', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide= id:header=
-.. =title=My Page=
-.. =text=Welcome!=
+....=title=My Page=
+....==text==Welcome!=
 =divide=
 ==CTIW==`;
 			const result = parse(source);
@@ -286,13 +286,13 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses multiple divides at top level', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide= id:header=
-.. =title=Header=
+....=title=Header=
 =divide=
 
 =divide= id:main=
-.. =button=Click=
+....=button=Click=
 =divide=
 ==CTIW==`;
 			const result = parse(source);
@@ -305,9 +305,9 @@ describe('CTIW Parser', () => {
 
 	describe('Nested Indentation', () => {
 		it('parses two dots as one level of nesting', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide=
-.. =text=Level 1=
+....==text==Level 1=
 =divide=
 ==CTIW==`;
 			const result = parse(source);
@@ -316,12 +316,12 @@ describe('CTIW Parser', () => {
 			expect(div.children.length).toBe(1);
 		});
 
-		it('parses four dots as two levels of nesting', () => {
-			const source = `=CTIW=
+		it('parses eight dots as two levels of nesting', () => {
+			const source = `==CTIW==
 =divide= id:parent=
-.. =divide= id:child=
-.... =text=Grandchild=
-.. =divide=
+....=divide= id:child=
+........==text==Grandchild==
+....=divide=
 =divide=
 ==CTIW==`;
 			const result = parse(source);
@@ -336,11 +336,11 @@ describe('CTIW Parser', () => {
 		});
 
 		it('handles sibling elements at same nesting level', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide=
-.. =text=First=
-.. =text=Second=
-.. =text=Third=
+....==text==First=
+....==text==Second=
+....==text==Third=
 =divide=
 ==CTIW==`;
 			const result = parse(source);
@@ -352,20 +352,20 @@ describe('CTIW Parser', () => {
 
 	describe('Complex Examples', () => {
 		it('parses the complete example from the spec', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =title=My First Page=
 =language=english=
 =font-size=20=
 
 =divide= id:header= outline=visible= color=BAF2Y9=
-.. =title=Welcome!=
+....=title=Welcome!=
 =divide=
 
 =divide= id:main=
-.. =text=Enter your password:=
-.. =password=
-.. =line=
-.. =button=Login=
+....==text==Enter your password:=
+....=password=
+....=line=
+....=button=Login=
 =divide=
 
 =(time)=
@@ -396,10 +396,10 @@ describe('CTIW Parser', () => {
 		});
 
 		it('parses example from task description', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =title=Hello=
 =divide= id:main=
-.. =button=Click=
+....=button=Click=
 =divide=
 ==CTIW==`;
 			const result = parse(source);
@@ -419,11 +419,11 @@ describe('CTIW Parser', () => {
 
 	describe('Empty Lines and Whitespace', () => {
 		it('ignores empty lines', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 
-=text=Hello=
+==text==Hello=
 
-=text=World=
+==text==World=
 
 ==CTIW==`;
 			const result = parse(source);
@@ -434,7 +434,7 @@ describe('CTIW Parser', () => {
 
 	describe('Error Handling', () => {
 		it('provides position info in errors', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =unknownelement=
 ==CTIW==`;
 			const result = parse(source);
@@ -445,10 +445,10 @@ describe('CTIW Parser', () => {
 		});
 
 		it('returns partial AST with errors for recoverable issues', () => {
-			const source = `=CTIW=
-=text=Valid Text=
+			const source = `==CTIW==
+==text==Valid Text=
 =bad syntax here
-=text=Still valid=
+==text==Still valid=
 ==CTIW==`;
 			const result = parse(source);
 
@@ -457,9 +457,9 @@ describe('CTIW Parser', () => {
 		});
 
 		it('handles unmatched divide gracefully', () => {
-			const source = `=CTIW=
+			const source = `==CTIW==
 =divide= id:start=
-.. =text=Inside=
+....==text==Inside=
 ==CTIW==`;
 			const result = parse(source);
 

@@ -18,17 +18,17 @@
 	let aiHelperCollapsed = $state(false);
 
 	// Default CTIW example code for kids to explore
-	const DEFAULT_CODE = `=CTIW=
+	const DEFAULT_CODE = `==CTIW==
 =title=My Awesome Page=
 
-=text=Hi! I made this page with CTIW!=
+==text==Hi! I made this page with CTIW!==
 
 =divide= id:funbox= color=ADD8E6=
-.. =text=This is inside a blue box!=
-.. =button=Click Me!=
+.... ==This is inside a blue box!==
+.... =button=Click Me!=
 =divide=
 
-=text=Thanks for visiting!=
+==Thanks for visiting!==
 =(time)=
 ==CTIW==`;
 

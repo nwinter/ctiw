@@ -25,14 +25,17 @@ const CTIW_REFERENCE = `
 CTIW = Clark's Text for Instructing Webpages
 
 ## Document Structure
-Every CTIW document starts with =CTIW= and ends with ==CTIW==
+Every CTIW document starts with ==CTIW== and ends with ==CTIW== (same marker for both!)
 
 ## Elements
-Elements are the building blocks. Format: =element=content= properties
+Elements are the building blocks.
+- Most elements use single equals: =element=content=
+- Text elements use DOUBLE equals: ==text==content== or just ==content==
 
-### Text Elements
-- =title=Big Title= - Creates an <h1> heading
-- =text=Paragraph text= - Creates a <p> paragraph
+### Text Elements (use double ==)
+- ==text==Paragraph text== - Creates a <p> paragraph
+- ==Hello world!== - Shorthand for ==text==Hello world!==
+- =title=Big Title= - Creates an <h1> heading (single = is OK for title)
 - =heading=Section Header= - Creates an <h2> heading
 - =subheading=Smaller Header= - Creates an <h3> heading
 
@@ -99,66 +102,68 @@ FF0000=Red, 00FF00=Green, 0000FF=Blue, FFFF00=Yellow,
 FF00FF=Pink, 00FFFF=Cyan, FFA500=Orange, 800080=Purple
 
 ## Indentation (Nesting)
-Use dots (two per level) to put elements inside containers:
+Use dots (FOUR per level) to put elements inside containers:
 
 =divide= color=ADD8E6=
-.. =text=Inside the box!=
-.. =divide= color=FFD700=
-.... =text=Nested deeper!=
-.. =divide=
+.... ==Inside the box!==
+.... =divide= color=FFD700=
+........ ==Nested deeper!==
+.... =divide=
 =divide=
 
 ## Common Patterns
 
 ### Centered Content
 =divide= in=middle=
-.. =title=Centered Title=
+.... =title=Centered Title=
 =divide=
 
 ### Colorful Box
 =divide= color=E6E6FA= outline=visible= padding=20=
-.. =text=Content here=
+.... ==Content here==
 =divide=
 
 ### Navigation with Header
 =header= color=333333=
-.. =nav=
-.... =link=Home= href:#home=
-.... =link=About= href:#about=
-.. =nav=
+.... =nav=
+........ =link=Home= href:#home=
+........ =link=About= href:#about=
+.... =nav=
 =header=
 
 ### List
 =ul=
-.. =li=First item=
-.. =li=Second item=
-.. =li=Third item=
+.... =li=First item=
+.... =li=Second item=
+.... =li=Third item=
 =ul=
 
 ### Form
 =divide= id:form=
-.. =text=Enter your name:=
-.. =input=
-.. =line=
-.. =text=Password:=
-.. =password=
-.. =line=
-.. =button=Submit=
+.... ==Enter your name:==
+.... =input=
+.... =line=
+.... ==Password:==
+.... =password=
+.... =line=
+.... =button=Submit=
 =divide=
 
 ### Styled Section
 =section= padding=20= border-radius=10= color=F0F0F0=
-.. =heading=About Us=
-.. =text=We make cool stuff!=
+.... =heading=About Us=
+.... ==We make cool stuff!==
 =section=
 
 ## Remember
-1. Every =CTIW= needs ==CTIW== at the end
-2. Every opening container element needs a matching closing element
-3. Use .. for each level of nesting inside containers
-4. Properties go AFTER the content, before the closing =
-5. Any HTML element works - just use its name!
-6. Any CSS property works - just use its name!
+1. Start and end with ==CTIW==
+2. Text uses double equals: ==text==hello== or just ==hello==
+3. Other elements use single equals: =button=Click Me!=
+4. Use .... (4 dots) for each level of nesting inside containers
+5. Every opening container needs a matching closing element
+6. Properties go AFTER the content, before the closing =
+7. Any HTML element works - just use its name!
+8. Any CSS property works - just use its name!
 `;
 
 // Simple fallback responses for quick actions
@@ -170,15 +175,15 @@ const QUICK_RESPONSES: Record<string, AssistResponse> = {
 	color: {
 		message: "Here's a colorful example with different colors:",
 		codeSnippet: `=divide= color=FF6B6B= outline=visible= padding=10=
-.. =text=Coral red box!=
+.... ==Coral red box!==
 =divide=
 
 =divide= color=4ECDC4= outline=visible= padding=10=
-.. =text=Teal box!=
+.... ==Teal box!==
 =divide=
 
 =divide= color=FFE66D= outline=visible= padding=10=
-.. =text=Yellow box!=
+.... ==Yellow box!==
 =divide=`
 	}
 };

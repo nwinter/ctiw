@@ -73,7 +73,7 @@ class Parser {
 	parse(): ParseResult {
 		// Parse header
 		if (!this.parseHeader()) {
-			this.addError("Oops! Your CTIW code needs to start with =CTIW=");
+			this.addError("Oops! Your CTIW code needs to start with ==CTIW==");
 		}
 
 		// Parse body content
@@ -97,7 +97,7 @@ class Parser {
 	}
 
 	/**
-	 * Parse the =CTIW= header
+	 * Parse the ==CTIW== header
 	 */
 	private parseHeader(): boolean {
 		// Skip empty lines at the start
@@ -108,7 +108,7 @@ class Parser {
 		}
 
 		const line = this.lines[this.currentLine].trim();
-		if (line === '=CTIW=') {
+		if (line === '==CTIW==') {
 			this.currentLine++;
 			return true;
 		}
@@ -145,7 +145,7 @@ class Parser {
 			const rawLine = this.lines[this.currentLine];
 			const trimmedLine = rawLine.trim();
 
-			// Check for footer
+			// Check for footer (must be exactly ==CTIW== with nothing else)
 			if (trimmedLine === '==CTIW==') {
 				break;
 			}
@@ -156,12 +156,12 @@ class Parser {
 				continue;
 			}
 
-			// Parse indentation (count leading dots)
+			// Parse indentation (count leading dots - 4 dots per level)
 			const { indent, content } = this.parseIndentation(rawLine);
 
-			// Check for closing divide (bare =divide= at same or lower indent level)
+			// Check for closing divide (bare =divide= or ==divide== at same or lower indent level)
 			// A closing divide is one without any attributes/content
-			if (content === '=divide=' && containerStack.length > 0) {
+			if ((content === '=divide=' || content === '==divide==') && containerStack.length > 0) {
 				// This is a closing divide - pop the most recent container
 				containerStack.pop();
 				this.currentLine++;
@@ -229,8 +229,8 @@ class Parser {
 			dots++;
 		}
 
-		// Each pair of dots is one level
-		const indent = Math.floor(dots / 2);
+		// Each group of 4 dots is one level of indentation
+		const indent = Math.floor(dots / 4);
 		const content = spaceTrimmed.slice(dots).trim();
 
 		return { indent, content };
@@ -254,8 +254,129 @@ class Parser {
 			return this.parseSpecialElement(line, lineNumber);
 		}
 
-		// Parse as property or element
+		// Check for double equals (text element syntax)
+		// ==text==content== or ==content== (shorthand for text)
+		if (line.startsWith('==')) {
+			return this.parseDoubleEqualsElement(line, lineNumber);
+		}
+
+		// Parse as property or element (single equals syntax for non-text elements)
 		return this.parsePropertyOrElement(line, lineNumber);
+	}
+
+	/**
+	 * Parse a double-equals element (text syntax)
+	 * ==text==content== or ==content== (shorthand for text)
+	 * Properties can follow: ==text==content== color=red=
+	 */
+	private parseDoubleEqualsElement(
+		line: string,
+		lineNumber: number
+	): ElementNode | null {
+		// Remove leading ==
+		let rest = line.slice(2);
+		const properties: ElementProperties = {};
+
+		// Check if this is the shorthand: ==content==
+		// vs the full form: ==text==content==
+		// The shorthand doesn't have a second == before the content ends
+
+		// Try to find ==text== pattern first
+		const textMatch = rest.match(/^text==(.*)$/i);
+		if (textMatch) {
+			// Full form: ==text==content== [properties]
+			let contentAndProps = textMatch[1];
+			let content: string | null = null;
+
+			// Special case: if contentAndProps starts with space, content is empty
+			// and rest is properties (e.g., ==text== color=red=)
+			if (contentAndProps.startsWith(' ')) {
+				// Empty content, parse properties
+				const propsStr = contentAndProps.trim();
+				if (propsStr) {
+					const propParts = this.tokenizeElementLine(propsStr);
+					for (const part of propParts) {
+						const [propName, propValue] = this.parseAttribute(part);
+						if (propName) {
+							properties[propName] = propValue;
+						}
+					}
+				}
+				return createElement('text', {
+					properties,
+					content: null,
+					indent: 0,
+					location: createLocation(lineNumber, 1, lineNumber, line.length)
+				});
+			}
+
+			// Find the closing == for content
+			const closingIndex = contentAndProps.indexOf('==');
+			if (closingIndex !== -1) {
+				content = contentAndProps.slice(0, closingIndex).trim() || null;
+				// Parse properties after the closing ==
+				const propsStr = contentAndProps.slice(closingIndex + 2).trim();
+				if (propsStr) {
+					const propParts = this.tokenizeElementLine(propsStr);
+					for (const part of propParts) {
+						const [propName, propValue] = this.parseAttribute(part);
+						if (propName) {
+							properties[propName] = propValue;
+						}
+					}
+				}
+			} else {
+				// No closing == - content goes to end
+				content = contentAndProps.trim() || null;
+			}
+
+			return createElement('text', {
+				properties,
+				content,
+				indent: 0,
+				location: createLocation(lineNumber, 1, lineNumber, line.length)
+			});
+		}
+
+		// Check for ==divide== pattern (container)
+		if (rest.toLowerCase().startsWith('divide')) {
+			const divideRest = rest.slice(6); // Remove 'divide'
+			if (divideRest.startsWith('==')) {
+				// ==divide==content/properties==
+				const afterEquals = divideRest.slice(2);
+				return this.parseElement('divide', afterEquals.replace(/==\s*$/, ''), lineNumber);
+			}
+		}
+
+		// Otherwise it's shorthand: ==content==
+		// Find the closing ==
+		const closingIndex = rest.indexOf('==');
+		let content: string | null = null;
+
+		if (closingIndex !== -1) {
+			content = rest.slice(0, closingIndex).trim() || null;
+			// Parse properties after the closing ==
+			const propsStr = rest.slice(closingIndex + 2).trim();
+			if (propsStr) {
+				const propParts = this.tokenizeElementLine(propsStr);
+				for (const part of propParts) {
+					const [propName, propValue] = this.parseAttribute(part);
+					if (propName) {
+						properties[propName] = propValue;
+					}
+				}
+			}
+		} else {
+			// No closing == - content goes to end
+			content = rest.trim() || null;
+		}
+
+		return createElement('text', {
+			properties,
+			content,
+			indent: 0,
+			location: createLocation(lineNumber, 1, lineNumber, line.length)
+		});
 	}
 
 	/**

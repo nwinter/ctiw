@@ -20,14 +20,21 @@ const elementCompletions: Completion[] = [
 	{
 		label: '=title=',
 		type: 'keyword',
-		detail: 'Text element',
+		detail: 'Heading element',
 		info: '📝 Big text for page titles or section headers'
 	},
 	{
-		label: '=text=',
+		label: '==text==',
 		type: 'keyword',
 		detail: 'Text element',
-		info: '✏️ Regular text - write whatever you want!'
+		info: '✏️ Regular text - write whatever you want! (Use double ==)'
+	},
+	{
+		label: '==',
+		type: 'keyword',
+		detail: 'Text shorthand',
+		info: '✏️ Quick way to add text - just ==your text here==',
+		boost: -1
 	},
 	{
 		label: '=line=',
@@ -82,7 +89,8 @@ const specialCompletions: Completion[] = [
 		label: '=(time)=',
 		type: 'keyword',
 		detail: 'Special element',
-		info: '⏰ Shows the current time - updates automatically!'
+		info: '⏰ Shows the current time - updates automatically!',
+		apply: '=(time)=' // Explicit apply to prevent issues
 	}
 ];
 
@@ -92,17 +100,11 @@ const specialCompletions: Completion[] = [
 
 const structureCompletions: Completion[] = [
 	{
-		label: '=CTIW=',
-		type: 'keyword',
-		detail: 'Document start',
-		info: '🚀 Start your CTIW document with this!',
-		boost: 10 // Prioritize at beginning
-	},
-	{
 		label: '==CTIW==',
 		type: 'keyword',
-		detail: 'Document end',
-		info: '🏁 End your CTIW document with this!'
+		detail: 'Document start/end',
+		info: '🚀 Start and end your CTIW document with this!',
+		boost: 10 // Prioritize at beginning
 	}
 ];
 

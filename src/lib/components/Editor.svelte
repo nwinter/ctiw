@@ -3,7 +3,7 @@
 	import { EditorView, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, keymap } from '@codemirror/view';
 	import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 	import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-	import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+	import { closeBrackets, closeBracketsKeymap, acceptCompletion } from '@codemirror/autocomplete';
 	import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 	import { ctiwLanguage } from '$lib/editor/ctiw-language';
 	import { ctiwAutocomplete } from '$lib/editor/ctiw-autocomplete';
@@ -92,6 +92,8 @@
 		highlightActiveLine(),
 		highlightSelectionMatches(),
 		keymap.of([
+			// Tab accepts completion if dropdown is open, otherwise indents
+			{ key: 'Tab', run: acceptCompletion },
 			...closeBracketsKeymap,
 			...defaultKeymap,
 			...searchKeymap,

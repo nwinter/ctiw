@@ -10,8 +10,11 @@
  */
 export enum TokenType {
 	// Document markers
-	CTIW_START = 'CTIW_START', // =CTIW=
+	CTIW_START = 'CTIW_START', // ==CTIW==
 	CTIW_END = 'CTIW_END', // ==CTIW==
+
+	// Double equals for text elements
+	DOUBLE_EQUALS = 'DOUBLE_EQUALS', // ==
 
 	// Delimiters
 	EQUALS = 'EQUALS', // =
@@ -260,18 +263,21 @@ export class Lexer {
 		const startColumn = this.column;
 		const char = this.current();
 
-		// Check for CTIW markers first
+		// Check for CTIW markers first (both start and end are ==CTIW==)
 		if (this.match('==CTIW==')) {
 			this.consume('==CTIW==');
-			this.addToken(TokenType.CTIW_END, '==CTIW==', startColumn);
+			// Determine if this is start or end based on context
+			const hasStart = this.tokens.some((t) => t.type === TokenType.CTIW_START);
+			this.addToken(hasStart ? TokenType.CTIW_END : TokenType.CTIW_START, '==CTIW==', startColumn);
 			this.inValueContext = false;
 			this.atStatementStart = false;
 			return;
 		}
 
-		if (this.match('=CTIW=')) {
-			this.consume('=CTIW=');
-			this.addToken(TokenType.CTIW_START, '=CTIW=', startColumn);
+		// Check for double equals (text element marker)
+		if (this.match('==') && !this.match('==CTIW==')) {
+			this.consume('==');
+			this.addToken(TokenType.DOUBLE_EQUALS, '==', startColumn);
 			this.inValueContext = false;
 			this.atStatementStart = false;
 			return;

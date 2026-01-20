@@ -240,6 +240,165 @@ Goal: Full working IDE for Clark (8yo) to write CTIW code with live preview.
 - Custom domain ctiw.nickwinter.net
 
 ### Changes Made
-(In progress - will be updated as work completes)
+
+**Lexer (`src/lib/parser/lexer.ts`):**
+- Implemented full tokenizer with all CTIW token types
+- Support for: CTIW_START, CTIW_END, EQUALS, DOUBLE_EQUALS, IDENTIFIER, STRING, NUMBER, HEX_COLOR, DOT, COLON, LPAREN, RPAREN, NEWLINE, EOF
+- Kid-friendly error messages
+- Line/column tracking
+
+**Parser (`src/lib/parser/parser.ts`):**
+- Line-based parser producing AST
+- Document structure validation (header/footer)
+- Element parsing with properties
+- Container nesting with dot-based indentation
+- Metadata extraction (title, language, font-size)
+
+**Code Generator (`src/lib/parser/codegen.ts`):**
+- AST to HTML/CSS transformation
+- Support for all element types
+- Property to CSS mapping
+- Nested container support
+
+**AST Types (`src/lib/parser/ast.ts`):**
+- Full type definitions for all node types
+- Helper functions for node creation
+
+**Editor (`src/lib/components/Editor.svelte`):**
+- CodeMirror 6 integration
+- Custom CTIW theme (dark, kid-friendly colors)
+- Two-way code binding
+
+**Syntax Highlighting (`src/lib/editor/ctiw-language.ts`):**
+- Lezer-based grammar for CTIW
+- Highlighting for all token types
+
+**Autocomplete (`src/lib/editor/ctiw-autocomplete.ts`):**
+- Context-aware completions
+- Element, property, and value suggestions
+- Kid-friendly descriptions with emojis
+
+**Preview (`src/lib/components/Preview.svelte`):**
+- Sandboxed iframe for HTML preview
+- Live updates on code change
+
+**Gallery (`src/lib/components/Gallery.svelte`):**
+- Project cards with thumbnails
+- Create/load/delete projects
+
+**Projects Store (`src/lib/stores/projects.svelte.ts`):**
+- Svelte 5 runes-based store
+- localStorage persistence
+- Example projects
+
+**AI Assistant (`src/lib/components/AIAssistant.svelte`):**
+- Chat interface for help
+- Quick action buttons
+- Code snippet insertion
+
+**API Route (`src/routes/api/assist/+server.ts`):**
+- Claude API integration
+- CTIW language reference in system prompt
+- Streaming support for long responses
+
+**Main Page (`src/routes/+page.svelte`):**
+- Full IDE layout with editor, preview, AI assistant
+- URL-based state management
+- Share functionality with base64-encoded URLs
+- Auto-save with debouncing
+
+### Files Created
+- `src/lib/parser/lexer.ts`
+- `src/lib/parser/parser.ts`
+- `src/lib/parser/codegen.ts`
+- `src/lib/parser/ast.ts`
+- `src/lib/editor/ctiw-language.ts`
+- `src/lib/editor/ctiw-autocomplete.ts`
+- `src/lib/components/Editor.svelte`
+- `src/lib/components/Preview.svelte`
+- `src/lib/components/Gallery.svelte`
+- `src/lib/components/AIAssistant.svelte`
+- `src/lib/components/SyntaxLegend.svelte`
+- `src/lib/stores/projects.svelte.ts`
+- `src/routes/api/assist/+server.ts`
+- `tests/lexer.test.ts`
+- `tests/parser.test.ts`
+- `tests/codegen.test.ts`
+
+### Outcome
+Success - Full IDE implemented with all features working
+
+---
+
+## 2026-01-20 - Bug Fixes and Clark's Syntax Feedback - Claude Code (Opus 4.5)
+
+### Prompt
+Multiple issues reported:
+1. Claude API model string was wrong (used specific date version instead of `claude-opus-4-5`)
+2. Editor loses focus when typing
+3. Layout not using full window width
+4. Streaming required for long Claude API requests
+
+Then Clark (8yo) provided feedback on the language syntax:
+1. Documents should start with `==CTIW==`, not `=CTIW=` (double equals for both start AND end)
+2. Indentation should be 4 dots, not 2
+3. Text elements use double equals: `==text==content==`
+4. `=(time)=` works alone but not inside text content
+5. Autocompleting `=(time)=` often leaves a trailing `)`
+6. Tab should accept autocompletion
+7. `==blah==` should work as shorthand for `==text==blah==`
+
+### Changes Made
+
+**API Fixes:**
+- Changed model string from `claude-opus-4-5-20250514` to `claude-opus-4-5`
+- Switched from `messages.create()` to `messages.stream()` with `.finalMessage()` for long requests
+
+**Editor Focus Fix:**
+- Changed Editor.svelte to use `onMount` for initialization instead of `$effect`
+- Used `$effect.pre` for external code sync
+- Added `!editorView.hasFocus` check to prevent sync during active typing
+
+**Layout Fix:**
+- Removed `max-w-7xl` constraint for full-width layout
+
+**Syntax Changes (Clark's feedback):**
+
+1. **Document markers** - Updated lexer to recognize `==CTIW==` for both start and end
+   - Added logic to distinguish START vs END based on whether START already exists
+
+2. **Indentation** - Changed from 2 dots to 4 dots per level
+   - `Math.floor(dots / 4)` instead of `Math.floor(dots / 2)`
+
+3. **Text elements** - Added DOUBLE_EQUALS token type and `parseDoubleEqualsElement()` method
+   - Supports `==text==content==` full form
+   - Supports `==content==` shorthand
+   - Supports properties: `==text== color=red=`
+
+4. **Autocomplete** - Added `apply: '=(time)='` to prevent trailing `)` issues
+
+5. **Tab completion** - Added `{ key: 'Tab', run: acceptCompletion }` to keymap
+
+6. **Updated all references:**
+   - Default code example in +page.svelte
+   - AI assistant CTIW reference documentation
+   - All autocomplete suggestions
+   - All test files
+
+### Files Modified
+- `src/routes/api/assist/+server.ts` - Model string, streaming, CTIW reference
+- `src/lib/components/Editor.svelte` - Focus handling, Tab completion
+- `src/lib/parser/lexer.ts` - DOUBLE_EQUALS token, ==CTIW== detection
+- `src/lib/parser/parser.ts` - 4-dot indentation, double-equals text parsing
+- `src/lib/editor/ctiw-autocomplete.ts` - Updated syntax, =(time)= fix
+- `src/routes/+page.svelte` - Layout width, default code
+- `tests/lexer.test.ts` - Updated for new syntax
+- `tests/parser.test.ts` - Updated for new syntax
+
+### Outcome
+Success - All 147 tests pass, build succeeds
+
+### Remaining Item
+- Support `=(time)=` inside text content (would require inline special element parsing)
 
 ---

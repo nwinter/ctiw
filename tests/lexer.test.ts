@@ -9,25 +9,32 @@ import {
 describe('Lexer', () => {
 	describe('Token Types', () => {
 		it('should tokenize CTIW_START marker', () => {
-			const lexer = new Lexer('=CTIW=');
+			const lexer = new Lexer('==CTIW==');
 			const tokens = lexer.tokenize();
 
 			expect(tokens[0]).toMatchObject({
 				type: TokenType.CTIW_START,
-				value: '=CTIW=',
+				value: '==CTIW==',
 				line: 1,
 				column: 1
 			});
 		});
 
 		it('should tokenize CTIW_END marker', () => {
-			const lexer = new Lexer('==CTIW==');
+			// Need a START first, then END
+			const lexer = new Lexer('==CTIW==\n==CTIW==');
 			const tokens = lexer.tokenize();
 
 			expect(tokens[0]).toMatchObject({
-				type: TokenType.CTIW_END,
+				type: TokenType.CTIW_START,
 				value: '==CTIW==',
 				line: 1,
+				column: 1
+			});
+			expect(tokens[2]).toMatchObject({
+				type: TokenType.CTIW_END,
+				value: '==CTIW==',
+				line: 2,
 				column: 1
 			});
 		});
@@ -349,10 +356,10 @@ describe('Lexer', () => {
 
 	describe('Full document tokenization', () => {
 		it('should tokenize a complete CTIW document', () => {
-			const code = `=CTIW=
+			const code = `==CTIW==
 =title=Hello=
 =divide= id:main=
-.. =text=Welcome!=
+.... ==text==Welcome!==
 =divide=
 ==CTIW==`;
 			const lexer = new Lexer(code);
@@ -370,9 +377,9 @@ describe('Lexer', () => {
 		});
 
 		it('should handle multiple lines with attributes', () => {
-			const code = `=CTIW=
+			const code = `==CTIW==
 =divide= id:header= outline=visible= color=BAF200=
-.. =title=Welcome!=
+.... =title=Welcome!=
 =divide=
 ==CTIW==`;
 			const lexer = new Lexer(code);
@@ -458,15 +465,13 @@ describe('Lexer', () => {
 			expect(newlineCount).toBe(3);
 		});
 
-		it('should handle consecutive equals signs distinctly', () => {
-			// == should be two EQUALS, not something else (unless at start with CTIW)
+		it('should handle consecutive equals signs as DOUBLE_EQUALS', () => {
+			// == should be a DOUBLE_EQUALS token (used for text elements)
 			const lexer = new Lexer('==');
 			const tokens = lexer.tokenize();
 
-			// Could be 2 EQUALS or the start of ==CTIW==
-			// Since there's no CTIW, should be 2 EQUALS
-			expect(tokens[0]).toMatchObject({ type: TokenType.EQUALS });
-			expect(tokens[1]).toMatchObject({ type: TokenType.EQUALS });
+			// == is now its own token type for text element syntax
+			expect(tokens[0]).toMatchObject({ type: TokenType.DOUBLE_EQUALS, value: '==' });
 		});
 
 		it('should handle numbers in identifiers', () => {
