@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { projectsStore, type Project } from '$lib/stores/projects';
+	import { projectsStore, type Project } from '$lib/stores/projects.svelte';
 
 	interface Props {
 		onLoadProject: (project: Project) => void;

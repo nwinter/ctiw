@@ -5,7 +5,7 @@
 	import Gallery from '$lib/components/Gallery.svelte';
 	import { parse } from '$lib/parser/parser';
 	import { generateHTML } from '$lib/parser/codegen';
-	import { projectsStore, type Project } from '$lib/stores/projects';
+	import { projectsStore, type Project } from '$lib/stores/projects.svelte';
 
 	// View modes
 	let showGallery = $state(true);
