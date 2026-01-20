@@ -58,10 +58,10 @@ export interface BaseNode {
 // =============================================================================
 
 /**
- * All valid CTIW element types.
- * These map to HTML elements during code generation.
+ * Core CTIW element types with special handling.
+ * These have specific mappings in the code generator.
  */
-export type CTIWElementType =
+export type CTIWCoreElementType =
 	| 'title' // Page or section title -> <h1>, <title>
 	| 'text' // Regular text -> <p>, <span>
 	| 'line' // Line break -> <br> or <hr>
@@ -71,6 +71,13 @@ export type CTIWElementType =
 	| 'divide' // Container -> <div>
 	| 'img' // Image -> <img>
 	| 'link'; // Hyperlink -> <a>
+
+/**
+ * CTIW element types can be either core types or generic HTML element names.
+ * This allows CTIW to support any HTML element while having special handling
+ * for common/kid-friendly elements.
+ */
+export type CTIWElementType = CTIWCoreElementType | string;
 
 /**
  * Position/alignment values for the 'in' property.
@@ -528,9 +535,9 @@ export function createError(
 // =============================================================================
 
 /**
- * All valid element type names.
+ * Core CTIW element type names with special handling.
  */
-export const ELEMENT_TYPES: readonly CTIWElementType[] = [
+export const CORE_ELEMENT_TYPES: readonly CTIWCoreElementType[] = [
 	'title',
 	'text',
 	'line',
@@ -543,15 +550,40 @@ export const ELEMENT_TYPES: readonly CTIWElementType[] = [
 ] as const;
 
 /**
+ * All valid element type names (for backward compatibility).
+ * Note: CTIW now supports ANY valid HTML element name.
+ */
+export const ELEMENT_TYPES: readonly string[] = [
+	...CORE_ELEMENT_TYPES,
+	// Common HTML elements for convenience
+	'div', 'span', 'p', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+	'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'thead', 'tbody',
+	'form', 'label', 'select', 'option', 'textarea', 'checkbox', 'radio',
+	'header', 'footer', 'nav', 'main', 'section', 'article', 'aside',
+	'video', 'audio', 'canvas', 'iframe', 'pre', 'code', 'blockquote',
+	'strong', 'em', 'b', 'i', 'u', 'br', 'hr', 'img'
+] as const;
+
+/**
  * All valid special element type names.
  */
 export const SPECIAL_TYPES: readonly SpecialElementType[] = ['time'] as const;
 
 /**
+ * Check if a string is a core CTIW element type (with special handling).
+ */
+export function isCoreElementType(name: string): name is CTIWCoreElementType {
+	return (CORE_ELEMENT_TYPES as readonly string[]).includes(name);
+}
+
+/**
  * Check if a string is a valid element type.
+ * CTIW now supports ANY element name (for generic HTML support),
+ * so this always returns true for non-empty strings.
  */
 export function isValidElementType(name: string): name is CTIWElementType {
-	return (ELEMENT_TYPES as readonly string[]).indexOf(name) !== -1;
+	// Any non-empty alphanumeric string (with hyphens) is valid
+	return /^[a-z][a-z0-9-]*$/i.test(name);
 }
 
 /**

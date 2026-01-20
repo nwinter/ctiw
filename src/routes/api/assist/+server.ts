@@ -1,4 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { ANTHROPIC_API_KEY } from '$env/static/private';
+import Anthropic from '@anthropic-ai/sdk';
 
 interface AssistRequest {
 	message: string;
@@ -9,225 +11,299 @@ interface AssistRequest {
 interface AssistResponse {
 	message: string;
 	codeSnippet?: string;
+	thinking?: string;
 }
 
-// CTIW Language quick reference for generating helpful responses
-const CTIW_BASICS = `
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+	apiKey: ANTHROPIC_API_KEY
+});
+
+// CTIW Language comprehensive reference
+const CTIW_REFERENCE = `
+# CTIW Language Reference
 CTIW = Clark's Text for Instructing Webpages
 
-CTIW is a kid-friendly programming language for building web pages.
-Every CTIW page starts with =CTIW= and ends with ==CTIW==
+## Document Structure
+Every CTIW document starts with =CTIW= and ends with ==CTIW==
 
-ELEMENTS (what you can put on the page):
-- =title=Your Title= - Big heading at the top
-- =text=Some words= - Regular paragraph text
-- =button=Click Me= - A clickable button
-- =line= - Adds a line break (new line)
-- =password= - Password input box (hides what you type)
-- =input= - Text input box for typing
-- =img=picture.png= - Shows an image
-- =divide= ... =divide= - Container/box for grouping things together
-- =(time)= - Special: shows the current time
+## Elements
+Elements are the building blocks. Format: =element=content= properties
 
-PROPERTIES (how to customize elements):
-Put properties AFTER the content, separated by spaces:
-=text=Hello!= color=FF0000=
+### Text Elements
+- =title=Big Title= - Creates an <h1> heading
+- =text=Paragraph text= - Creates a <p> paragraph
+- =heading=Section Header= - Creates an <h2> heading
+- =subheading=Smaller Header= - Creates an <h3> heading
 
-- color=RRGGBB= - Set colors using hex codes (6 characters)
-  Examples: FF0000=Red, 00FF00=Green, 0000FF=Blue, FFFF00=Yellow, FF00FF=Pink
-- id:name= - Give an element a name/ID
-- outline=visible= - Show a border around containers
-- in=middle= - Center the content
-- size=100= - Set the size
+### Interactive Elements
+- =button=Click Me= - Creates a <button>
+- =link=Click here= href:url= - Creates an <a> link
+- =input= - Creates a text input <input type="text">
+- =password= - Creates a password input <input type="password">
 
-CONTAINERS (divide):
-Use =divide= to create boxes that hold other elements.
-Always close with another =divide=
+### Media Elements
+- =img=filename.png= - Creates an <img> tag
+- =video=movie.mp4= - Creates a <video> tag
+- =audio=sound.mp3= - Creates an <audio> tag
 
-INDENTATION (putting things inside boxes):
-Use dots (two per level) at the start of lines to show nesting:
+### Layout Elements
+- =line= - Creates a line break <br>
+- =divide= ... =divide= - Creates a container <div> (must be closed!)
+- =hr= - Horizontal rule (line across the page)
+
+### Special Elements
+- =(time)= - Shows current time, updates live
+
+### Generic HTML Elements
+CTIW supports ANY HTML element! Just use the element name:
+- =span=inline text= - Creates <span>
+- =section= ... =section= - Creates <section> container
+- =header= ... =header= - Creates <header> container
+- =footer= ... =footer= - Creates <footer> container
+- =nav= ... =nav= - Creates <nav> container
+- =article= ... =article= - Creates <article> container
+- =aside= ... =aside= - Creates <aside> container
+- =ul= ... =ul= - Creates unordered list
+- =li=Item= - Creates list item
+- =ol= ... =ol= - Creates ordered list
+
+## Properties
+Properties customize elements. Add them after the content:
+=text=Hello= color=FF0000= size=24=
+
+### Common Properties
+- color=RRGGBB= - Set background color (hex, 6 chars)
+- background=RRGGBB= - Set background color
+- id:name= - Give element an ID
+- class:classname= - Add a CSS class
+- outline=visible= - Show border around element
+- in=middle= or in=left= or in=right= - Text alignment
+- margin=number= - Set margin in pixels
+- padding=number= - Set padding in pixels
+
+### CSS Properties (pass-through)
+ANY CSS property works! Examples:
+- font-size=24= - Font size (24px)
+- font-weight=bold= - Bold text
+- width=200= - Width (200px)
+- height=100= - Height (100px)
+- border-radius=10= - Rounded corners
+- display=flex= - Flexbox layout
+- gap=10= - Gap between flex items
+- opacity=0.5= - Transparency
+- transform=rotate(45deg)= - Transforms
+
+### Color Examples
+FF0000=Red, 00FF00=Green, 0000FF=Blue, FFFF00=Yellow,
+FF00FF=Pink, 00FFFF=Cyan, FFA500=Orange, 800080=Purple
+
+## Indentation (Nesting)
+Use dots (two per level) to put elements inside containers:
+
 =divide= color=ADD8E6=
-.. =text=This is inside the blue box!=
-.. =button=A button in the box!=
-=divide=
-
-You can nest boxes inside boxes:
-=divide= color=FFD700=
-.. =divide= color=98FB98=
-.... =text=Nested twice!=
+.. =text=Inside the box!=
+.. =divide= color=FFD700=
+.... =text=Nested deeper!=
 .. =divide=
 =divide=
 
-COMPLETE EXAMPLE:
-=CTIW=
-=title=Welcome to My Page=
+## Common Patterns
 
-=text=This is a paragraph of text.=
-
-=divide= color=E6E6FA= outline=visible=
-.. =title=A Purple Box=
-.. =text=Boxes can contain multiple elements!=
-.. =button=Click here!=
+### Centered Content
+=divide= in=middle=
+.. =title=Centered Title=
 =divide=
 
-=text=More text outside the box.=
-=(time)=
-==CTIW==
+### Colorful Box
+=divide= color=E6E6FA= outline=visible= padding=20=
+.. =text=Content here=
+=divide=
+
+### Navigation with Header
+=header= color=333333=
+.. =nav=
+.... =link=Home= href:#home=
+.... =link=About= href:#about=
+.. =nav=
+=header=
+
+### List
+=ul=
+.. =li=First item=
+.. =li=Second item=
+.. =li=Third item=
+=ul=
+
+### Form
+=divide= id:form=
+.. =text=Enter your name:=
+.. =input=
+.. =line=
+.. =text=Password:=
+.. =password=
+.. =line=
+.. =button=Submit=
+=divide=
+
+### Styled Section
+=section= padding=20= border-radius=10= color=F0F0F0=
+.. =heading=About Us=
+.. =text=We make cool stuff!=
+=section=
+
+## Remember
+1. Every =CTIW= needs ==CTIW== at the end
+2. Every opening container element needs a matching closing element
+3. Use .. for each level of nesting inside containers
+4. Properties go AFTER the content, before the closing =
+5. Any HTML element works - just use its name!
+6. Any CSS property works - just use its name!
 `;
 
-// Check for common issues in CTIW code
-function analyzeCode(code: string): { issues: string[]; suggestions: string[] } {
-	const issues: string[] = [];
-	const suggestions: string[] = [];
+// Simple fallback responses for quick actions
+const QUICK_RESPONSES: Record<string, AssistResponse> = {
+	button: {
+		message: "Here's a button you can customize:",
+		codeSnippet: '=button=Click Me!='
+	},
+	color: {
+		message: "Here's a colorful example with different colors:",
+		codeSnippet: `=divide= color=FF6B6B= outline=visible= padding=10=
+.. =text=Coral red box!=
+=divide=
 
-	// Check for CTIW markers
-	if (!code.includes('=CTIW=')) {
-		issues.push('Missing =CTIW= at the start');
-		suggestions.push('Add =CTIW= at the very beginning of your code');
+=divide= color=4ECDC4= outline=visible= padding=10=
+.. =text=Teal box!=
+=divide=
+
+=divide= color=FFE66D= outline=visible= padding=10=
+.. =text=Yellow box!=
+=divide=`
 	}
+};
 
-	if (!code.includes('==CTIW==')) {
-		issues.push('Missing ==CTIW== at the end');
-		suggestions.push('Add ==CTIW== at the very end of your code');
-	}
-
-	// Check for unclosed divides
-	const divideOpens = (code.match(/=divide=/g) || []).length;
-	if (divideOpens % 2 !== 0) {
-		issues.push('Unmatched divide - you have an odd number of =divide= tags');
-		suggestions.push('Each =divide= needs a closing =divide=');
-	}
-
-	// Check for common syntax issues
-	if (code.includes('= =') || code.includes('==') && !code.includes('==CTIW==')) {
-		issues.push('Possible spacing issue with = signs');
-	}
-
-	return { issues, suggestions };
-}
-
-// Mock responses based on action or message content
-function generateResponse(request: AssistRequest): AssistResponse {
+// Generate response using Claude Opus 4.5 with extended thinking
+async function generateClaudeResponse(request: AssistRequest): Promise<AssistResponse> {
 	const { message, code, action } = request;
-	const lowercaseMsg = (message || '').toLowerCase();
-	const analysis = analyzeCode(code);
 
-	// Handle quick actions
+	// Handle quick actions with preset responses (faster)
+	if (action && QUICK_RESPONSES[action]) {
+		return QUICK_RESPONSES[action];
+	}
+
+	// Build the system prompt
+	const systemPrompt = `You are a friendly, encouraging AI helper for CTIW (Clark's Text for Instructing Webpages), a kid-friendly programming language for building web pages. Your job is to help an 8-year-old learn CTIW and build cool web pages.
+
+${CTIW_REFERENCE}
+
+## Your Personality
+- Be enthusiastic and encouraging! Use phrases like "Great question!" and "Nice work!"
+- Keep explanations simple and clear - you're talking to a kid
+- Use emojis sparingly but appropriately
+- If you suggest code, make it fun and colorful
+- Celebrate successes!
+
+## Response Format
+Your response MUST be valid JSON with these fields:
+- "message": Your friendly explanation (required)
+- "codeSnippet": CTIW code to share (optional, only if relevant)
+
+Example: {"message": "Here's how to add a title!", "codeSnippet": "=title=My Cool Page="}
+
+## Important Rules
+1. ONLY output valid JSON - no other text
+2. Code snippets should be CTIW code ONLY (not full documents unless requested)
+3. If fixing code, include the FULL corrected document
+4. Be concise but helpful`;
+
+	// Build the user message based on action or free text
+	let userMessage = '';
 	if (action === 'fix') {
-		if (analysis.issues.length > 0) {
-			let fixMessage = "I found some things to fix in your code:\n\n";
-			analysis.issues.forEach((issue, i) => {
-				fixMessage += `${i + 1}. ${issue}\n`;
-			});
-			fixMessage += "\nHere's how your code should look:";
+		userMessage = `Please review and fix any issues in my CTIW code. If there are problems, provide the corrected full document. If it looks good, just say so encouragingly!
 
-			// Generate a fixed version
-			let fixedCode = code;
-			if (!code.includes('=CTIW=')) {
-				fixedCode = '=CTIW=\n' + fixedCode;
-			}
-			if (!code.includes('==CTIW==')) {
-				fixedCode = fixedCode.trim() + '\n==CTIW==';
-			}
+My current code:
+\`\`\`
+${code}
+\`\`\``;
+	} else if (action === 'explain') {
+		userMessage = `Please explain how CTIW works in a fun, simple way that an 8-year-old can understand. Reference my current code if helpful:
+\`\`\`
+${code}
+\`\`\``;
+	} else {
+		userMessage = `${message}
 
-			return {
-				message: fixMessage,
-				codeSnippet: fixedCode
-			};
+My current CTIW code:
+\`\`\`
+${code}
+\`\`\``;
+	}
+
+	try {
+		const response = await anthropic.messages.create({
+			model: 'claude-opus-4-5-20250514',
+			max_tokens: 8000,
+			thinking: {
+				type: 'enabled',
+				budget_tokens: 5000
+			},
+			system: systemPrompt,
+			messages: [
+				{ role: 'user', content: userMessage }
+			]
+		});
+
+		// Extract thinking and response text
+		let thinkingText = '';
+		let responseText = '';
+
+		for (const block of response.content) {
+			if (block.type === 'thinking') {
+				thinkingText = block.thinking;
+			} else if (block.type === 'text') {
+				responseText = block.text;
+			}
 		}
+
+		// Parse the JSON response
+		try {
+			// Try to extract JSON from the response
+			const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+			if (jsonMatch) {
+				const parsed = JSON.parse(jsonMatch[0]);
+				return {
+					message: parsed.message || "I'm here to help!",
+					codeSnippet: parsed.codeSnippet,
+					thinking: thinkingText
+				};
+			}
+		} catch {
+			// If JSON parsing fails, use the raw text
+		}
+
+		// Fallback: use the response text directly
 		return {
-			message: "Great job! Your code looks good to me. Keep up the awesome work!"
+			message: responseText || "I'm here to help with CTIW!",
+			thinking: thinkingText
+		};
+
+	} catch (error) {
+		console.error('Claude API error:', error);
+		// Return a helpful fallback
+		return {
+			message: "I'm having a little trouble thinking right now, but I'm still here to help! Try asking me about how to add a button, make colorful boxes, or explain what CTIW is."
 		};
 	}
-
-	if (action === 'explain') {
-		return {
-			message: "Let me explain how CTIW works!\n\nCTIW is a simple language for making web pages. Every CTIW page starts with =CTIW= and ends with ==CTIW==.\n\nInside, you can add elements like:\n- =title= for headings\n- =text= for paragraphs\n- =button= for clickable buttons\n- =divide= for boxes that hold other things\n\nYou can add colors with color=FF0000= (that's red!) and organize things with dots for indentation."
-		};
-	}
-
-	if (action === 'button') {
-		return {
-			message: "Here's how to add a button to your page! You can change the text inside to say whatever you want.",
-			codeSnippet: '=button=Click Me!='
-		};
-	}
-
-	if (action === 'color') {
-		return {
-			message: "Let's make your page colorful! Colors in CTIW use 6-letter codes called hex codes.\n\nHere are some fun colors:\n- FF0000 = Red\n- 00FF00 = Green\n- 0000FF = Blue\n- FFFF00 = Yellow\n- FF00FF = Pink\n- 00FFFF = Cyan\n\nHere's a colorful box:",
-			codeSnippet: '=divide= color=FF6B6B= outline=visible=\n.. =text=This box is coral red!=\n=divide=\n\n=divide= color=4ECDC4= outline=visible=\n.. =text=This box is teal!=\n=divide='
-		};
-	}
-
-	// Handle natural language questions
-	if (lowercaseMsg.includes('how') && lowercaseMsg.includes('title')) {
-		return {
-			message: "Great question! To add a title, use the =title= element. The text between the = signs will be your title!",
-			codeSnippet: '=title=My Awesome Page='
-		};
-	}
-
-	if (lowercaseMsg.includes('how') && lowercaseMsg.includes('image') || lowercaseMsg.includes('picture')) {
-		return {
-			message: "To add an image, use the =img= element with the image file name!",
-			codeSnippet: '=img=my-picture.png='
-		};
-	}
-
-	if (lowercaseMsg.includes('how') && lowercaseMsg.includes('box') || lowercaseMsg.includes('container')) {
-		return {
-			message: "To create a box (container), use =divide=. Put things inside by using dots for indentation, then close it with another =divide=!",
-			codeSnippet: '=divide= color=BAF2Y9= outline=visible=\n.. =title=Inside the box!=\n.. =text=This text is in the box too!=\n=divide='
-		};
-	}
-
-	if (lowercaseMsg.includes('what') && lowercaseMsg.includes('ctiw')) {
-		return {
-			message: "CTIW stands for \"Clark's Text for Instructing Webpages\"! It's a fun, easy way to build web pages. Instead of complicated HTML tags like <div>, you use simple commands like =divide=. Everything uses = signs, which makes it easy to type and understand!\n\nEvery CTIW page starts with =CTIW= and ends with ==CTIW==. Inside, you add elements like =title=, =text=, =button=, and more!"
-		};
-	}
-
-	if (lowercaseMsg.includes('help') || lowercaseMsg.includes('start') || lowercaseMsg.includes('begin')) {
-		return {
-			message: "Welcome to CTIW! Here's a simple page to get you started. It has a title, some text, and a button!",
-			codeSnippet: '=CTIW=\n=title=My First Page=\n\n=text=Hello, world!=\n\n=button=Click Me!=\n==CTIW=='
-		};
-	}
-
-	if (lowercaseMsg.includes('password') || lowercaseMsg.includes('login') || lowercaseMsg.includes('form')) {
-		return {
-			message: "Here's how to make a simple login form with a password field!",
-			codeSnippet: '=divide= id:login-form=\n.. =text=Enter your password:=\n.. =password=\n.. =line=\n.. =button=Login=\n=divide='
-		};
-	}
-
-	if (lowercaseMsg.includes('center') || lowercaseMsg.includes('middle')) {
-		return {
-			message: "To center something, use the in=middle= property!",
-			codeSnippet: '=divide= in=middle=\n.. =text=This is centered!=\n=divide='
-		};
-	}
-
-	if (lowercaseMsg.includes('time') || lowercaseMsg.includes('clock')) {
-		return {
-			message: "You can show the current time with the special =(time)= element!",
-			codeSnippet: '=(time)='
-		};
-	}
-
-	// Default helpful response
-	return {
-		message: "I'm not sure about that, but I'm here to help! You can ask me:\n\n- \"How do I add a button?\"\n- \"How do I make a colorful box?\"\n- \"What is CTIW?\"\n- \"Help me get started\"\n\nOr try the quick action buttons above!"
-	};
 }
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json() as AssistRequest;
-		const response = generateResponse(body);
+		const response = await generateClaudeResponse(body);
 		return json(response);
 	} catch (error) {
+		console.error('API error:', error);
 		return json({
 			message: "Oops! Something went wrong. Let's try that again!"
 		}, { status: 500 });

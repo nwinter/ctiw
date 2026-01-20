@@ -400,7 +400,7 @@ describe('CTIW Code Generator', () => {
 			const element = createElement('divide', {
 				properties: {
 					id: 'styled',
-					color: 'BAF2Y9',
+					color: 'BAF2E9',
 					outline: 'visible',
 					size: 200
 				}
@@ -408,7 +408,7 @@ describe('CTIW Code Generator', () => {
 			const css = generateCSS([element]);
 
 			expect(css).toContain('#styled {');
-			expect(css).toContain('background-color: #BAF2Y9');
+			expect(css).toContain('background-color: #BAF2E9');
 			expect(css).toContain('border: 1px solid black');
 			expect(css).toContain('width: 200px');
 		});
@@ -498,7 +498,7 @@ describe('CTIW Code Generator', () => {
 			// Complete example from LANGUAGE_SPEC.md
 			const welcomeTitle = createElement('title', { content: 'Welcome!' });
 			const headerDiv = createElement('divide', {
-				properties: { id: 'header', outline: 'visible', color: 'BAF2Y9' },
+				properties: { id: 'header', outline: 'visible', color: 'BAF2E9' },
 				children: [welcomeTitle]
 			});
 
@@ -531,7 +531,7 @@ describe('CTIW Code Generator', () => {
 			expect(html).toContain('<h1>Welcome!</h1>');
 			expect(html).toContain('#header {');
 			expect(html).toContain('border: 1px solid black');
-			expect(html).toContain('background-color: #BAF2Y9');
+			expect(html).toContain('background-color: #BAF2E9');
 
 			// Check main section
 			expect(html).toContain('<div id="main">');
@@ -580,6 +580,141 @@ describe('CTIW Code Generator', () => {
 			const html = generateElement(element);
 
 			expect(html).toContain('Hello World!');
+		});
+	});
+
+	describe('Generic HTML Elements', () => {
+		it('generates span element', () => {
+			const element = createElement('span', { content: 'inline text' });
+			const html = generateElement(element);
+
+			expect(html).toBe('<span>inline text</span>');
+		});
+
+		it('generates section element with children', () => {
+			const child = createElement('text', { content: 'Section content' });
+			const element = createElement('section', {
+				properties: { id: 'main-section' },
+				children: [child]
+			});
+			const html = generateElement(element);
+
+			expect(html).toContain('<section id="main-section">');
+			expect(html).toContain('<p>Section content</p>');
+			expect(html).toContain('</section>');
+		});
+
+		it('generates header element', () => {
+			const title = createElement('title', { content: 'Site Title' });
+			const element = createElement('header', {
+				children: [title]
+			});
+			const html = generateElement(element);
+
+			expect(html).toContain('<header>');
+			expect(html).toContain('<h1>Site Title</h1>');
+			expect(html).toContain('</header>');
+		});
+
+		it('generates footer element', () => {
+			const text = createElement('text', { content: 'Copyright 2024' });
+			const element = createElement('footer', {
+				children: [text]
+			});
+			const html = generateElement(element);
+
+			expect(html).toContain('<footer>');
+			expect(html).toContain('<p>Copyright 2024</p>');
+			expect(html).toContain('</footer>');
+		});
+
+		it('generates nav element with links', () => {
+			const link = createElement('link', {
+				content: 'Home',
+				properties: { href: '/home' }
+			});
+			const element = createElement('nav', {
+				children: [link]
+			});
+			const html = generateElement(element);
+
+			expect(html).toContain('<nav>');
+			expect(html).toContain('<a href="/home">Home</a>');
+			expect(html).toContain('</nav>');
+		});
+
+		it('generates ul and li elements', () => {
+			const li1 = createElement('li', { content: 'Item 1' });
+			const li2 = createElement('li', { content: 'Item 2' });
+			const ul = createElement('ul', {
+				children: [li1, li2]
+			});
+			const html = generateElement(ul);
+
+			expect(html).toContain('<ul>');
+			expect(html).toContain('<li>Item 1</li>');
+			expect(html).toContain('<li>Item 2</li>');
+			expect(html).toContain('</ul>');
+		});
+
+		it('generates self-closing hr element', () => {
+			const element = createElement('hr');
+			const html = generateElement(element);
+
+			expect(html).toBe('<hr>');
+		});
+
+		it('applies inline styles to elements without id', () => {
+			const element = createElement('section', {
+				properties: { color: 'FF0000', outline: 'visible' }
+			});
+			const html = generateElement(element);
+
+			expect(html).toContain('style="');
+			expect(html).toContain('background-color: #FF0000');
+			expect(html).toContain('border: 1px solid black');
+		});
+
+		it('generates article element', () => {
+			const element = createElement('article', {
+				properties: { id: 'post-1' }
+			});
+			const html = generateElement(element);
+
+			expect(html).toContain('<article id="post-1">');
+			expect(html).toContain('</article>');
+		});
+
+		it('generates aside element', () => {
+			const element = createElement('aside', { content: 'Sidebar content' });
+			const html = generateElement(element);
+
+			expect(html).toBe('<aside>Sidebar content</aside>');
+		});
+
+		it('passes through CSS properties as inline styles', () => {
+			const element = createElement('span', {
+				properties: { 'font-size': 24, 'font-weight': 'bold' }
+			});
+			const html = generateElement(element);
+
+			expect(html).toContain('style="');
+			expect(html).toContain('font-size: 24px');
+			expect(html).toContain('font-weight: bold');
+		});
+
+		it('handles heading element mapped to h2', () => {
+			const element = createElement('heading', { content: 'Section Title' });
+			const html = generateElement(element);
+
+			expect(html).toBe('<h2>Section Title</h2>');
+		});
+
+		it('handles subheading element mapped to h3', () => {
+			const element = createElement('subheading', { content: 'Sub Section' });
+			const html = generateElement(element);
+
+			expect(html).toBe('<h3>Sub Section</h3>');
 		});
 	});
 });

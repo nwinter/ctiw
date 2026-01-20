@@ -14,7 +14,100 @@ import type {
 	ElementProperties,
 	CTIWElementType
 } from './ast';
-import { isElementNode, isSpecialNode } from './ast';
+import { isElementNode, isSpecialNode, isCoreElementType } from './ast';
+
+/**
+ * Known CSS properties that CTIW properties map to.
+ * Properties not in this map are passed through as-is.
+ */
+const CSS_PROPERTY_MAP: Record<string, string> = {
+	// CTIW-specific mappings
+	'color': 'background-color',
+	'in': 'text-align',
+	'size': 'width',
+	// Direct CSS properties (pass through)
+	'background': 'background',
+	'background-color': 'background-color',
+	'border': 'border',
+	'border-radius': 'border-radius',
+	'font-size': 'font-size',
+	'font-family': 'font-family',
+	'font-weight': 'font-weight',
+	'text-align': 'text-align',
+	'width': 'width',
+	'height': 'height',
+	'margin': 'margin',
+	'margin-top': 'margin-top',
+	'margin-bottom': 'margin-bottom',
+	'margin-left': 'margin-left',
+	'margin-right': 'margin-right',
+	'padding': 'padding',
+	'padding-top': 'padding-top',
+	'padding-bottom': 'padding-bottom',
+	'padding-left': 'padding-left',
+	'padding-right': 'padding-right',
+	'display': 'display',
+	'flex': 'flex',
+	'flex-direction': 'flex-direction',
+	'justify-content': 'justify-content',
+	'align-items': 'align-items',
+	'gap': 'gap',
+	'grid': 'grid',
+	'position': 'position',
+	'top': 'top',
+	'left': 'left',
+	'right': 'right',
+	'bottom': 'bottom',
+	'z-index': 'z-index',
+	'opacity': 'opacity',
+	'transform': 'transform',
+	'transition': 'transition',
+	'cursor': 'cursor',
+	'overflow': 'overflow',
+	'box-shadow': 'box-shadow',
+	'text-decoration': 'text-decoration',
+	'line-height': 'line-height',
+	'letter-spacing': 'letter-spacing',
+	'max-width': 'max-width',
+	'min-width': 'min-width',
+	'max-height': 'max-height',
+	'min-height': 'min-height'
+};
+
+/**
+ * Properties that are HTML attributes (not CSS)
+ */
+const HTML_ATTRIBUTES = new Set([
+	'id', 'class', 'href', 'src', 'alt', 'title', 'type', 'name', 'value',
+	'placeholder', 'disabled', 'readonly', 'checked', 'selected',
+	'target', 'rel', 'download', 'data', 'role', 'aria-label',
+	'width', 'height', // For img, video, etc.
+	'autoplay', 'controls', 'loop', 'muted', 'poster', // Media elements
+	'action', 'method', 'enctype', // Form elements
+	'colspan', 'rowspan', 'scope', // Table elements
+	'min', 'max', 'step', 'pattern', 'required', 'maxlength', 'minlength', // Input attributes
+	'for', 'tabindex', 'autofocus', 'autocomplete'
+]);
+
+/**
+ * Self-closing HTML elements (void elements)
+ */
+const SELF_CLOSING_ELEMENTS = new Set([
+	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+	'link', 'meta', 'param', 'source', 'track', 'wbr'
+]);
+
+/**
+ * CTIW element type to HTML tag mapping
+ */
+const ELEMENT_TAG_MAP: Record<string, string> = {
+	'title': 'h1',
+	'text': 'p',
+	'divide': 'div',
+	'line': 'br',
+	'heading': 'h2',
+	'subheading': 'h3'
+};
 
 /** Language code mappings */
 const LANGUAGE_MAP: Record<string, string> = {
@@ -43,6 +136,39 @@ function escapeHTML(text: string): string {
 }
 
 /**
+ * Check if a value looks like a hex color (6 characters, all hex digits)
+ */
+function isHexColor(value: string): boolean {
+	return /^[0-9A-Fa-f]{6}$/.test(value);
+}
+
+/**
+ * Format a CSS value, adding units or # prefix as needed
+ */
+function formatCSSValue(propName: string, value: string | number): string {
+	const strValue = String(value);
+
+	// Properties that expect colors
+	if (propName.includes('color') || propName === 'background') {
+		if (isHexColor(strValue)) {
+			return `#${strValue}`;
+		}
+	}
+
+	// Properties that expect pixel values
+	const pixelProps = ['font-size', 'width', 'height', 'margin', 'padding', 'gap',
+		'top', 'left', 'right', 'bottom', 'border-radius', 'size',
+		'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+		'padding-top', 'padding-bottom', 'padding-left', 'padding-right',
+		'max-width', 'min-width', 'max-height', 'min-height'];
+	if (pixelProps.includes(propName) && /^\d+$/.test(strValue)) {
+		return `${strValue}px`;
+	}
+
+	return strValue;
+}
+
+/**
  * Generates CSS styles for a single element
  */
 function generateElementCSS(element: ElementNode): string {
@@ -52,33 +178,45 @@ function generateElementCSS(element: ElementNode): string {
 
 	const styles: string[] = [];
 
-	// Process each property that maps to CSS
-	if (props.color) {
-		styles.push(`background-color: #${props.color}`);
-	}
+	// Process each property
+	for (const [key, value] of Object.entries(props)) {
+		if (value === undefined || value === null) continue;
+		if (HTML_ATTRIBUTES.has(key)) continue; // Skip HTML attributes
 
-	if (props.outline === 'visible') {
-		styles.push('border: 1px solid black');
-	} else if (props.outline === 'invisible') {
-		styles.push('border: none');
-	}
-
-	if (props.in) {
-		if (props.in === 'middle' || props.in === 'center') {
-			styles.push('text-align: center');
-		} else if (props.in === 'left') {
-			styles.push('text-align: left');
-		} else if (props.in === 'right') {
-			styles.push('text-align: right');
+		// Special CTIW property handling
+		if (key === 'color' && isHexColor(String(value))) {
+			styles.push(`background-color: #${value}`);
+			continue;
 		}
-	}
 
-	if (props['font-size'] !== undefined) {
-		styles.push(`font-size: ${props['font-size']}px`);
-	}
+		if (key === 'outline') {
+			if (value === 'visible') {
+				styles.push('border: 1px solid black');
+			} else if (value === 'invisible') {
+				styles.push('border: none');
+			}
+			continue;
+		}
 
-	if (props.size !== undefined) {
-		styles.push(`width: ${props.size}px`);
+		if (key === 'in') {
+			if (value === 'middle' || value === 'center') {
+				styles.push('text-align: center');
+			} else if (value === 'left') {
+				styles.push('text-align: left');
+			} else if (value === 'right') {
+				styles.push('text-align: right');
+			}
+			continue;
+		}
+
+		// Map CTIW property to CSS property or pass through
+		const cssProperty = CSS_PROPERTY_MAP[key] || key;
+
+		// Only output if it looks like a valid CSS property (contains lowercase letters and hyphens)
+		if (/^[a-z][a-z0-9-]*$/i.test(cssProperty)) {
+			const formattedValue = formatCSSValue(key, value);
+			styles.push(`${cssProperty}: ${formattedValue}`);
+		}
 	}
 
 	if (styles.length === 0) return '';
@@ -118,11 +256,65 @@ export function generateCSS(nodes: CTIWNode[]): string {
 function generateAttributes(props: ElementProperties): string {
 	const attrs: string[] = [];
 
-	if (props.id) {
-		attrs.push(`id="${props.id}"`);
+	for (const [key, value] of Object.entries(props)) {
+		if (value === undefined || value === null) continue;
+
+		// Only include known HTML attributes
+		if (HTML_ATTRIBUTES.has(key)) {
+			attrs.push(`${key}="${escapeHTML(String(value))}"`);
+		}
 	}
 
 	return attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+}
+
+/**
+ * Generate inline styles for elements without IDs
+ */
+function generateInlineStyles(props: ElementProperties): string {
+	const styles: string[] = [];
+
+	for (const [key, value] of Object.entries(props)) {
+		if (value === undefined || value === null) continue;
+		if (HTML_ATTRIBUTES.has(key)) continue; // Skip HTML attributes
+
+		// Special CTIW property handling
+		if (key === 'color' && isHexColor(String(value))) {
+			styles.push(`background-color: #${value}`);
+			continue;
+		}
+
+		if (key === 'outline') {
+			if (value === 'visible') {
+				styles.push('border: 1px solid black');
+			} else if (value === 'invisible') {
+				styles.push('border: none');
+			}
+			continue;
+		}
+
+		if (key === 'in') {
+			if (value === 'middle' || value === 'center') {
+				styles.push('text-align: center');
+			} else if (value === 'left') {
+				styles.push('text-align: left');
+			} else if (value === 'right') {
+				styles.push('text-align: right');
+			}
+			continue;
+		}
+
+		// Map CTIW property to CSS property or pass through
+		const cssProperty = CSS_PROPERTY_MAP[key] || key;
+
+		// Only output if it looks like a valid CSS property
+		if (/^[a-z][a-z0-9-]*$/i.test(cssProperty)) {
+			const formattedValue = formatCSSValue(key, value);
+			styles.push(`${cssProperty}: ${formattedValue}`);
+		}
+	}
+
+	return styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
 }
 
 /**
@@ -151,62 +343,60 @@ export function generateElement(node: CTIWNode, indent: string = ''): string {
 
 	const element = node;
 	const attrs = generateAttributes(element.properties);
+	const inlineStyles = !element.properties.id ? generateInlineStyles(element.properties) : '';
 	const content = element.content ? escapeHTML(element.content) : '';
+	const elementType = element.elementType;
 
-	switch (element.elementType) {
-		case 'title':
-			return `<h1${attrs}>${content}</h1>`;
-
-		case 'text':
-			return `<p${attrs}>${content}</p>`;
-
-		case 'divide': {
-			// Filter children to only Elements and Specials (skip Properties, Errors, etc.)
-			const validChildren = element.children.filter(
-				(child) => isElementNode(child) || isSpecialNode(child)
-			);
-			const childrenHTML = validChildren
-				.map((child) => generateElement(child, indent + '  '))
-				.join('\n' + indent + '  ');
-			if (childrenHTML) {
-				return `<div${attrs}>\n${indent}  ${childrenHTML}\n${indent}</div>`;
-			}
-			return `<div${attrs}></div>`;
-		}
-
-		case 'button':
-			return `<button${attrs}>${content}</button>`;
-
+	// Special CTIW-specific element handling
+	switch (elementType) {
 		case 'password': {
 			const placeholder = content ? ` placeholder="${content}"` : '';
 			const idAttr = element.properties.id ? ` id="${element.properties.id}"` : '';
-			return `<input type="password"${idAttr}${placeholder}>`;
+			return `<input type="password"${idAttr}${placeholder}${inlineStyles}>`;
 		}
 
 		case 'input': {
 			const placeholder = content ? ` placeholder="${content}"` : '';
 			const idAttr = element.properties.id ? ` id="${element.properties.id}"` : '';
-			return `<input type="text"${idAttr}${placeholder}>`;
+			return `<input type="text"${idAttr}${placeholder}${inlineStyles}>`;
 		}
 
 		case 'img': {
-			const src = content || '';
+			const src = content || element.properties.src || '';
+			const alt = element.properties.alt || '';
 			const idAttr = element.properties.id ? ` id="${element.properties.id}"` : '';
-			return `<img src="${src}" alt=""${idAttr}>`;
+			return `<img src="${escapeHTML(src)}" alt="${escapeHTML(alt)}"${idAttr}${inlineStyles}>`;
 		}
-
-		case 'line':
-			return '<br>';
 
 		case 'link': {
 			const href = element.properties.href || '#';
 			const idAttr = element.properties.id ? ` id="${element.properties.id}"` : '';
-			return `<a href="${href}"${idAttr}>${content}</a>`;
+			return `<a href="${escapeHTML(href)}"${idAttr}${inlineStyles}>${content}</a>`;
 		}
-
-		default:
-			return `<!-- Unknown element: ${element.elementType} -->`;
 	}
+
+	// Map CTIW element type to HTML tag, or use the type directly as a tag
+	const tag = ELEMENT_TAG_MAP[elementType] || elementType;
+
+	// Handle self-closing elements
+	if (SELF_CLOSING_ELEMENTS.has(tag)) {
+		return `<${tag}${attrs}${inlineStyles}>`;
+	}
+
+	// Handle elements with children (containers)
+	const validChildren = element.children.filter(
+		(child) => isElementNode(child) || isSpecialNode(child)
+	);
+
+	if (validChildren.length > 0) {
+		const childrenHTML = validChildren
+			.map((child) => generateElement(child, indent + '  '))
+			.join('\n' + indent + '  ');
+		return `<${tag}${attrs}${inlineStyles}>\n${indent}  ${childrenHTML}\n${indent}</${tag}>`;
+	}
+
+	// Simple element with content
+	return `<${tag}${attrs}${inlineStyles}>${content}</${tag}>`;
 }
 
 /**

@@ -15,6 +15,7 @@
 	let showShareModal = $state(false);
 	let shareUrl = $state('');
 	let copySuccess = $state(false);
+	let aiHelperCollapsed = $state(false);
 
 	// Default CTIW example code for kids to explore
 	const DEFAULT_CODE = `=CTIW=
@@ -99,26 +100,36 @@
 	}
 
 	// Handle loading a project from gallery
-	function handleLoadProject(project: Project) {
+	function handleLoadProject(project: Project, pushState = true) {
 		currentProject = project;
 		code = project.code;
 		showGallery = false;
+		if (pushState && browser) {
+			history.pushState({ view: 'project', projectId: project.id }, '', `?project=${project.id}`);
+		}
 	}
 
 	// Handle creating a new project
-	function handleNewProject() {
+	function handleNewProject(pushState = true) {
 		currentProject = null;
 		code = DEFAULT_CODE;
 		showGallery = false;
+		if (pushState && browser) {
+			history.pushState({ view: 'editor' }, '', '?new');
+		}
 	}
 
 	// Go back to gallery
-	function handleBackToGallery() {
+	function handleBackToGallery(pushState = true) {
 		// Save current project before going back
 		if (currentProject) {
 			projectsStore.updateProject(currentProject.id, { code });
 		}
 		showGallery = true;
+		currentProject = null;
+		if (pushState && browser) {
+			history.pushState({ view: 'gallery' }, '', window.location.pathname);
+		}
 	}
 
 	// Save project (creates new if none exists)
@@ -131,6 +142,10 @@
 			const title = result.document.metadata.title || 'My New Project';
 			const newProject = projectsStore.createProject(title, code);
 			currentProject = newProject;
+			// Update URL to reflect the saved project
+			if (browser) {
+				history.replaceState({ view: 'project', projectId: newProject.id }, '', `?project=${newProject.id}`);
+			}
 		}
 	}
 
@@ -146,27 +161,88 @@
 		return () => clearTimeout(saveTimeout);
 	});
 
-	// URL state management - check for code in URL hash on load
+	// URL state management - handle initial load and popstate
 	$effect(() => {
 		if (browser) {
-			const hash = window.location.hash.slice(1); // Remove the #
-			if (hash) {
-				try {
-					// Decode base64 URL-safe to regular base64, then decode
-					const base64 = hash.replace(/-/g, '+').replace(/_/g, '/');
-					const decoded = atob(base64);
-					if (decoded.includes('=CTIW=')) {
-						code = decoded;
-						showGallery = false;
-						// Clear the hash after loading
-						history.replaceState(null, '', window.location.pathname);
+			// Handle initial URL on page load
+			handleUrlState();
+
+			// Listen for back/forward navigation
+			const handlePopState = (event: PopStateEvent) => {
+				if (event.state?.view === 'gallery') {
+					showGallery = true;
+					currentProject = null;
+				} else if (event.state?.view === 'project' && event.state.projectId) {
+					const project = projectsStore.projects.find(p => p.id === event.state.projectId);
+					if (project) {
+						handleLoadProject(project, false);
+					} else {
+						// Project not found, go to gallery
+						showGallery = true;
+						currentProject = null;
 					}
-				} catch {
-					// Invalid base64 - ignore
+				} else if (event.state?.view === 'editor') {
+					handleNewProject(false);
+				} else {
+					// Check URL params as fallback
+					handleUrlState();
 				}
-			}
+			};
+
+			window.addEventListener('popstate', handlePopState);
+			return () => window.removeEventListener('popstate', handlePopState);
 		}
 	});
+
+	// Parse URL and set initial state
+	function handleUrlState() {
+		const params = new URLSearchParams(window.location.search);
+		const hash = window.location.hash.slice(1);
+
+		// Check for shared code in hash (base64 encoded)
+		if (hash) {
+			try {
+				const base64 = hash.replace(/-/g, '+').replace(/_/g, '/');
+				const decoded = atob(base64);
+				if (decoded.includes('=CTIW=')) {
+					code = decoded;
+					showGallery = false;
+					currentProject = null;
+					// Replace hash URL with clean URL
+					history.replaceState({ view: 'editor' }, '', '?new');
+					return;
+				}
+			} catch {
+				// Invalid base64 - ignore
+			}
+		}
+
+		// Check for project ID in query params
+		const projectId = params.get('project');
+		if (projectId) {
+			const project = projectsStore.projects.find(p => p.id === projectId);
+			if (project) {
+				currentProject = project;
+				code = project.code;
+				showGallery = false;
+				history.replaceState({ view: 'project', projectId: project.id }, '', `?project=${project.id}`);
+				return;
+			}
+		}
+
+		// Check for new editor
+		if (params.has('new')) {
+			showGallery = false;
+			currentProject = null;
+			code = DEFAULT_CODE;
+			history.replaceState({ view: 'editor' }, '', '?new');
+			return;
+		}
+
+		// Default to gallery
+		showGallery = true;
+		history.replaceState({ view: 'gallery' }, '', window.location.pathname);
+	}
 
 	// Generate shareable URL
 	function handleShare() {
@@ -212,7 +288,7 @@
 			{#if !showGallery}
 				<div class="flex items-center gap-2">
 					<button
-						onclick={handleBackToGallery}
+						onclick={() => handleBackToGallery()}
 						class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
 					>
 						← My Projects
@@ -241,57 +317,62 @@
 				<Gallery onLoadProject={handleLoadProject} onNewProject={handleNewProject} />
 			</div>
 		{:else}
-			<!-- Editor View -->
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
-				<!-- Editor Panel -->
-				<div class="flex flex-col min-h-0">
-					<div class="flex items-center justify-between mb-2">
-						<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-							<span class="text-xl">✏️</span> Code
-						</h2>
-						{#if currentProject}
-							<span class="text-sm text-gray-500">{currentProject.name}</span>
-						{/if}
-					</div>
-					<div class="flex-1 min-h-0 rounded-xl overflow-hidden shadow-lg bg-[#1a1b26]">
-						<Editor bind:code />
-					</div>
-
-					<!-- Parse Errors -->
-					{#if parseErrors.length > 0}
-						<div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-2 flex-shrink-0">
-							<h3 class="text-sm font-semibold text-red-700 mb-1">Oops! Check your code:</h3>
-							<ul class="text-sm text-red-600 space-y-1">
-								{#each parseErrors as error}
-									<li>• {error}</li>
-								{/each}
-							</ul>
+			<!-- Editor View - Responsive layout with fixed AI helper width -->
+			<div class="flex gap-4 h-full">
+				<!-- Code & Preview Container - Takes remaining space -->
+				<div class="flex-1 flex gap-4 min-w-0">
+					<!-- Editor Panel -->
+					<div class="flex-1 flex flex-col min-h-0 min-w-0">
+						<div class="flex items-center justify-between mb-2">
+							<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+								<span class="text-xl">✏️</span> Code
+							</h2>
+							{#if currentProject}
+								<span class="text-sm text-gray-500 truncate ml-2">{currentProject.name}</span>
+							{/if}
 						</div>
+						<div class="flex-1 min-h-0 rounded-xl overflow-hidden shadow-lg bg-[#1a1b26]">
+							<Editor bind:code />
+						</div>
+
+						<!-- Parse Errors -->
+						{#if parseErrors.length > 0}
+							<div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-2 flex-shrink-0">
+								<h3 class="text-sm font-semibold text-red-700 mb-1">Oops! Check your code:</h3>
+								<ul class="text-sm text-red-600 space-y-1">
+									{#each parseErrors as error}
+										<li>• {error}</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+
+						<!-- Syntax Reference -->
+						<div class="mt-2 flex-shrink-0">
+							<SyntaxLegend />
+						</div>
+					</div>
+
+					<!-- Preview Panel -->
+					<div class="flex-1 flex flex-col min-h-0 min-w-0">
+						<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+							<span class="text-xl">👀</span> Preview
+						</h2>
+						<div class="flex-1 min-h-0 bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg">
+							<Preview html={generatedHTML} />
+						</div>
+					</div>
+				</div>
+
+				<!-- AI Assistant Panel - Fixed width, collapses to narrow strip -->
+				<div class="flex flex-col min-h-0 transition-all duration-300" style="width: {aiHelperCollapsed ? '60px' : '380px'}; flex-shrink: 0;">
+					{#if !aiHelperCollapsed}
+						<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+							<span class="text-xl">🤖</span> AI Helper
+						</h2>
 					{/if}
-
-					<!-- Syntax Reference -->
-					<div class="mt-2 flex-shrink-0">
-						<SyntaxLegend />
-					</div>
-				</div>
-
-				<!-- Preview Panel -->
-				<div class="flex flex-col min-h-0">
-					<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
-						<span class="text-xl">👀</span> Preview
-					</h2>
-					<div class="flex-1 min-h-0 bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg">
-						<Preview html={generatedHTML} />
-					</div>
-				</div>
-
-				<!-- AI Assistant Panel -->
-				<div class="flex flex-col min-h-0">
-					<h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
-						<span class="text-xl">🤖</span> AI Helper
-					</h2>
 					<div class="flex-1 min-h-0 rounded-xl overflow-hidden shadow-lg">
-						<AIAssistant currentCode={code} onInsertCode={handleInsertCode} />
+						<AIAssistant currentCode={code} onInsertCode={handleInsertCode} onCollapsedChange={(collapsed) => aiHelperCollapsed = collapsed} />
 					</div>
 				</div>
 			</div>

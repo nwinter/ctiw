@@ -9,11 +9,18 @@
 	interface Props {
 		currentCode: string;
 		onInsertCode: (code: string) => void;
+		onCollapsedChange?: (collapsed: boolean) => void;
 	}
 
-	let { currentCode, onInsertCode }: Props = $props();
+	let { currentCode, onInsertCode, onCollapsedChange }: Props = $props();
 
 	let isOpen = $state(true);
+
+	// Notify parent when collapsed state changes
+	function toggleOpen() {
+		isOpen = !isOpen;
+		onCollapsedChange?.(!isOpen);
+	}
 	let messages = $state<Message[]>([
 		{
 			id: 'welcome',
@@ -112,7 +119,7 @@
 	<!-- Toggle Button -->
 	<button
 		class="toggle-btn"
-		onclick={() => (isOpen = !isOpen)}
+		onclick={toggleOpen}
 		aria-label={isOpen ? 'Collapse assistant' : 'Expand assistant'}
 	>
 		{#if isOpen}
